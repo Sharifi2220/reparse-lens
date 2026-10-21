@@ -2,7 +2,7 @@
 
 ## Scope and supported expectations
 
-Reparse Lens `0.1.0-dev` is an experimental **metadata-only advisory inspector**. It is **not** a sandbox, access-control boundary, malware detector, comprehensive NTFS reparse-tag auditor or guarantee that a directory is safe. **All reports set `authorization: false`**, even when the status is `ADVISORY`.
+Reparse Lens `0.1.0-preview.1` is an experimental **metadata-only advisory inspector**. It is **not** a sandbox, access-control boundary, malware detector, comprehensive NTFS reparse-tag auditor or guarantee that a directory is safe. **All reports set `authorization: false`**, even when the status is `ADVISORY`.
 
 The source `scan` and `doctor` commands do not intentionally execute Git or coding agents, read file bodies, change scanned files or send telemetry. The tests create temporary synthetic files. Filesystem/OS providers may perform their own I/O, including network access for mapped, UNC or cloud-backed paths; this program does not enforce a network isolation policy.
 
