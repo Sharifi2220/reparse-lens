@@ -1,4 +1,5 @@
 name: GitHub preview release
+# Audited one-time v0.1.0-preview.1 publication. Subsequent pushes are idempotent.
 
 on:
   pull_request:
