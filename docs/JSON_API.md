@@ -38,9 +38,15 @@ An abbreviated clean report looks like this:
     "omittedFindings": 0
   },
   "findings": [],
-  "warnings": []
+  "warnings": [
+    "SNAPSHOT_ONLY",
+    "NOT_AN_EXECUTION_AUTHORIZATION",
+    "TOCTOU_NOT_PREVENTED"
+  ]
 }
 ```
+
+Even a clean report includes the baseline warnings above. On Windows, the scanner additionally emits `WINDOWS_REPARSE_TAG_COVERAGE_UNVERIFIED`; a clean Windows result remains `INCOMPLETE` because not all native reparse tags can be inspected.
 
 Paths in findings are bounded, display-oriented labels relative to the selected root where possible. They are not safe to use as authorization inputs or as a promise that the same path still refers to the same object.
 
