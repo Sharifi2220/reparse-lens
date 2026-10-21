@@ -1,53 +1,55 @@
-name: Publish Reparse Lens to npm (manual)
+name: npm dual-use preview preflight (manual, no publish)
+
+# npm dual-use policy requires direct publishing to enforce interactive 2FA.
+# This workflow verifies the released tag but NEVER publishes or receives tokens.
+# See https://docs.npmjs.com/policies/dual-use/
 
 on:
   workflow_dispatch:
     inputs:
       confirm_tag:
-        description: "Type v0.1.0-preview.1 to confirm first public npm publication"
+        description: "Type v0.1.0-preview.2 for read-only npm release preflight"
         required: true
         type: string
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
-  npm-preview:
-    name: Verify and publish preview-tagged npm package
-    if: ${{ github.repository == 'Sharifi2220/reparse-lens' && inputs.confirm_tag == 'v0.1.0-preview.1' }}
+  verify-npm-preview:
+    name: Verify npm dual-use preview without publishing
+    if: ${{ github.repository == 'Sharifi2220/reparse-lens' && inputs.confirm_tag == 'v0.1.0-preview.2' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Checkout the already released tag, not moving main
+      - name: Checkout immutable GitHub prerelease tag
         uses: actions/checkout@v7
         with:
-          ref: refs/tags/v0.1.0-preview.1
+          ref: refs/tags/v0.1.0-preview.2
           persist-credentials: false
-      - name: Prepare Node.js and npm registry
+      - name: Prepare Node.js
         uses: actions/setup-node@v7
         with:
           node-version: "24"
-          registry-url: "https://registry.npmjs.org"
           package-manager-cache: false
-      - name: Update npm for OIDC trusted-publisher compatibility
-        run: npm install --global npm@^11
-      - name: Verify package, CLI version, source tests and allowlist
+      - name: Verify checks, dual-use declaration, and nine-file package
         run: |
           npm run check
           npm test
-          test "$(node src/cli.mjs --version)" = "0.1.0-preview.1"
+          test "$(node src/cli.mjs --version)" = "0.1.0-preview.2"
           npm pack --dry-run --json --ignore-scripts > "${RUNNER_TEMP}/reparse-npm-pack.json"
           node --input-type=module <<'JS'
           import { readFileSync } from 'node:fs';
           const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
-          const entry = JSON.parse(readFileSync(process.env.RUNNER_TEMP+'/reparse-npm-pack.json','utf8'))[0];
-          const expected = ['LICENSE','README.md','SECURITY.md','docs/FAQ.md','docs/THREAT_MODEL.md','package.json','src/cli.mjs','src/scanner.mjs'].sort();
-          if (pkg.name !== 'reparse-lens' || pkg.version !== '0.1.0-preview.1' || pkg.private !== false || pkg.publishConfig?.tag !== 'preview') throw Error('Unexpected manifest');
-          if (JSON.stringify(entry.files.map(f => f.path).sort()) !== JSON.stringify(expected)) throw Error('Package allowlist mismatch');
-          console.log('Verified exact eight-file npm distribution');
+          const entry = JSON.parse(readFileSync(process.env.RUNNER_TEMP + '/reparse-npm-pack.json', 'utf8'))[0];
+          const expected = ['DISCLOSURE','LICENSE','README.md','SECURITY.md','docs/FAQ.md','docs/THREAT_MODEL.md','package.json','src/cli.mjs','src/scanner.mjs'].sort();
+          if (pkg.name !== 'reparse-lens' || pkg.version !== '0.1.0-preview.2' || pkg.private !== false || pkg.publishConfig?.tag !== 'preview' || pkg.contentPolicy?.class !== 'dual-use') throw Error('Manifest does not meet the preview/dual-use policy contract');
+          if (JSON.stringify(entry.files.map(f => f.path).sort()) !== JSON.stringify(expected)) throw Error('Unexpected npm package contents');
+          if (!readFileSync('DISCLOSURE', 'utf8').includes('Dual-Use Disclosure')) throw Error('Root DISCLOSURE not found');
+          console.log('Nine intended npm files and dual-use metadata verified. No package has been published.');
           JS
-      - name: Publish experimental npm preview (not latest)
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --access public --tag preview
+      - name: Instructions for direct interactive 2FA publishing
+        run: |
+          echo "This workflow does NOT publish to npm or accept secrets."
+          echo "After verifying the tag and an authenticated account on your own trusted Windows device, run an interactive 2FA-enforced npm publish --access public --tag preview."
+          echo "Verify the registry entry and install result separately."
