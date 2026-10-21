@@ -14,6 +14,7 @@ It does **not** enforce an access-control policy, sandbox another process, verif
 | `src/scanner.mjs` | Validate root, incrementally enumerate filesystem metadata, classify findings, record incomplete coverage |
 | `test/scanner.test.mjs` | Synthetic cross-platform regression tests; fixture creation/teardown |
 | `package.json` | Node 22+ engine, CLI entry point, script commands and explicit npm file allowlist |
+| `docs/JSON_API.md` | Stable schema-v1 field reference and integration guidance for JSON consumers |
 | `SECURITY.md` | Supported security claims and private vulnerability reporting |
 
 The scanner uses built-in `node:fs` and `node:path`: `lstatSync`, `realpathSync.native`, `opendirSync`/`readSync`, `resolve`, `relative` and path-root utilities.

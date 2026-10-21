@@ -65,6 +65,7 @@ export function scanWorkspace(selectedRoot, options = {}) {
   let omittedFindings = 0;
   let blockedObserved = false;
   let displayedBlocked = false;
+  let scanLimit = null;
   const findingCounts = { linksAndEscapes: 0, portability: 0, gitMetadata: 0, other: 0 };
   function recordFinding(finding) {
     findingCounts[findingCategory(finding.code)] += 1;
@@ -80,6 +81,9 @@ export function scanWorkspace(selectedRoot, options = {}) {
       }
       omittedFindings += 1;
     }
+  }
+  function recordScanLimit(kind, limit, nextPath) {
+    if (!scanLimit) scanLimit = { kind, limit, nextPath };
   }
   const warnings = ['SNAPSHOT_ONLY', 'NOT_AN_EXECUTION_AUTHORIZATION', 'TOCTOU_NOT_PREVENTED'];
   let checkedEntries = 0;
@@ -135,12 +139,13 @@ export function scanWorkspace(selectedRoot, options = {}) {
       while ((entry = dir.readSync()) !== null) {
         const parts = [...current.parts, entry.name];
         const shown = label(parts);
-        checkedEntries += 1;
-        if (checkedEntries > maxEntries) {
-          recordFinding({ code: 'SCAN_ENTRY_LIMIT', path: shown });
+        if (checkedEntries >= maxEntries) {
+          recordScanLimit('entries', maxEntries, shown);
+          recordFinding({ code: 'SCAN_ENTRY_LIMIT', path: shown, detail: 'next entry was not inspected' });
           pending.length = 0;
           break;
         }
+        checkedEntries += 1;
         if (portable) {
           for (const code of windowsNameIssues(entry.name)) recordFinding({ code, path: shown });
           const folded = entry.name.normalize('NFC').toUpperCase();
@@ -167,6 +172,7 @@ export function scanWorkspace(selectedRoot, options = {}) {
               continue;
             }
             if (current.depth + 1 > maxDepth) {
+              recordScanLimit('depth', maxDepth, shown);
               recordFinding({ code: 'SCAN_DEPTH_LIMIT', path: shown });
               continue;
             }
@@ -209,13 +215,17 @@ export function scanWorkspace(selectedRoot, options = {}) {
     if (process.platform === 'win32') warnings.push('WINDOWS_REPARSE_TAG_COVERAGE_UNVERIFIED');
     if (excludedGitInternals) warnings.push('ROOT_GIT_INTERNALS_NOT_SCANNED');
     if (omittedFindings) warnings.push('FINDINGS_TRUNCATED');
+    if (scanLimit) warnings.push('SCAN_LIMIT_REACHED');
     const status = hasBlocked ? 'BLOCKED' : (findings.length || omittedFindings || process.platform === 'win32' ? 'INCOMPLETE' : 'ADVISORY');
     return {
       schemaVersion: 1, status, authorization: false, platform: process.platform,
       entriesChecked: checkedEntries, excludedGitInternals,
       limits: { maxEntries, maxDepth, maxFindings }, portabilityChecked: portable,
+      scanComplete: scanLimit === null, scanLimit,
       summary: { ...findingCounts, totalFindings: findings.length + omittedFindings,
         shownFindings: findings.length, omittedFindings }, findings, warnings
     };
   }
 }
+
+

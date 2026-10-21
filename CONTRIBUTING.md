@@ -33,4 +33,4 @@ Start with a focused issue or patch describing the user-visible behaviour. Do no
 
 The synchronized baseline has **25 tests**. On 2026-10-21 its cross-platform CI matrix passed with documented platform SKIPs; a passing matrix is not proof of complete native NTFS or TOCTOU coverage. See the [README](README.md) for architecture and the [Threat model](docs/THREAT_MODEL.md) for what this scanner cannot establish.
 
-General contribution contact: [akkbkk10@gmail.com](mailto:akkbkk10@gmail.com).
+For public contributions, use GitHub issues or pull requests. Security issues follow [SECURITY.md](SECURITY.md) and should not be disclosed publicly.

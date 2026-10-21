@@ -35,6 +35,37 @@ test('hidden ignored empty directory still consumes scan budget', () => withFixt
   const r = scanWorkspace(root, { maxEntries: 1 });
   assert.equal(r.status, 'INCOMPLETE');
   assert.ok(r.findings.some(f => f.code === 'SCAN_ENTRY_LIMIT'));
+  assert.equal(r.entriesChecked, 1);
+  assert.equal(r.scanComplete, false);
+  assert.equal(r.scanLimit.kind, 'entries');
+  assert.equal(r.scanLimit.limit, 1);
+  assert.ok(r.scanLimit.nextPath);
+  assert.ok(r.warnings.includes('SCAN_LIMIT_REACHED'));
+}));
+
+test('blocked result exposes incomplete scan coverage independently', t => withFixture((root, base) => {
+  const outside = join(base, 'outside');
+  mkdirSync(outside);
+  try {
+    for (const name of ['00-link', '01-link'])
+      symlinkSync(outside, join(root, name), process.platform === 'win32' ? 'junction' : 'dir');
+  } catch (e) {
+    if (['EPERM', 'EACCES', 'ENOTSUP', 'EOPNOTSUPP'].includes(e?.code)) {
+      t.skip('Host cannot create a link fixture; combined budget coverage remains open');
+      return;
+    }
+    throw e;
+  }
+  const r = scanWorkspace(root, { maxEntries: 1 });
+  assert.equal(r.status, 'BLOCKED');
+  assert.equal(r.entriesChecked, 1);
+  assert.equal(r.scanComplete, false);
+  assert.deepEqual(r.scanLimit.kind, 'entries');
+  assert.equal(r.scanLimit.limit, 1);
+  assert.ok(r.scanLimit.nextPath);
+  assert.ok(r.warnings.includes('SCAN_LIMIT_REACHED'));
+  assert.ok(r.findings.some(f => f.code === 'LINK_FOUND'));
+  assert.equal(r.authorization, false);
 }));
 
 test('depth ceiling never produces a clean result', () => withFixture(root => {
@@ -57,9 +88,17 @@ test('only root .git internals are excluded, with warning', () => withFixture(ro
   assert.ok(r.warnings.includes('ROOT_GIT_INTERNALS_NOT_SCANNED'));
 }));
 
-test('hardlink aliases are unresolved, never silently accepted', () => withFixture(root => {
+test('hardlink aliases are unresolved, never silently accepted', t => withFixture(root => {
   writeFileSync(join(root, 'a.txt'), 'data');
-  linkSync(join(root, 'a.txt'), join(root, 'b.txt'));
+  try {
+    linkSync(join(root, 'a.txt'), join(root, 'b.txt'));
+  } catch (e) {
+    if (['EPERM', 'EACCES', 'ENOTSUP', 'EOPNOTSUPP'].includes(e?.code)) {
+      t.skip('Host cannot create a hardlink fixture; hardlink coverage remains open');
+      return;
+    }
+    throw e;
+  }
   const r = scanWorkspace(root);
   assert.equal(r.status, 'INCOMPLETE');
   assert.ok(r.findings.some(f => f.code === 'MULTIPLE_HARDLINKS_UNRESOLVED'));
@@ -222,6 +261,26 @@ test('CLI output limit and grouped findings remain machine readable', () => with
   assert.ok(data.warnings.includes('FINDINGS_TRUNCATED'));
 }));
 
+test('human report separates budget coverage from BLOCKED status', t => withFixture((root, base) => {
+  const outside = join(base, 'outside');
+  mkdirSync(outside);
+  try {
+    for (const name of ['00-link', '01-link'])
+      symlinkSync(outside, join(root, name), process.platform === 'win32' ? 'junction' : 'dir');
+  } catch (e) {
+    if (['EPERM', 'EACCES', 'ENOTSUP', 'EOPNOTSUPP'].includes(e?.code)) {
+      t.skip('Host cannot create a link fixture; human coverage output remains open');
+      return;
+    }
+    throw e;
+  }
+  const cli = join(testParent, '..', 'src', 'cli.mjs');
+  const res = spawnSync(process.execPath, [cli, 'scan', root, '--max-entries', '1'], { encoding: 'utf8' });
+  assert.equal(res.status, 2);
+  assert.match(res.stdout, /Scan coverage: INCOMPLETE/);
+  assert.match(res.stdout, /next path not checked:/);
+}));
+
 
 test('CLI double-dash allows option-looking directory names, even --help', () => withFixture((root, base) => {
   const cli = join(testParent, '..', 'src', 'cli.mjs');
@@ -304,3 +363,5 @@ test('reported filename truncation preserves Unicode codepoints and sanitizes C1
   assert.ok(r.findings.some(x => x.path.includes('control?')));
   assert.ok(!JSON.stringify(r).includes('\u009b'));
 }));
+
+

@@ -36,7 +36,8 @@
     "SECURITY.md",
     "docs/FAQ.md",
     "docs/THREAT_MODEL.md",
-    "DISCLOSURE"
+    "DISCLOSURE",
+    "docs/JSON_API.md"
   ],
   "scripts": {
     "scan": "node src/cli.mjs scan .",

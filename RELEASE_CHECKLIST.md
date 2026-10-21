@@ -2,7 +2,7 @@
 
 Reparse Lens is an **experimental, advisory-only** filesystem metadata inspector. This version adds a voluntary npm dual-use declaration and the required disclosure; it does not add new scanner security capabilities.
 
-## Exact public source allowlist (17 files)
+## Exact public source allowlist (18 files)
 
 ```text
 .gitattributes
@@ -26,7 +26,7 @@ test/scanner.test.mjs
 
 No internal STATUS, private workspace contents, backups, agent plans, personal paths, credentials or unrelated project files belong in the public tree or distributed archive. Check the final reachable Git history and diff, not just the working tree.
 
-## Exact npm distribution allowlist (9 files)
+## Exact npm distribution allowlist (10 files)
 
 ```text
 DISCLOSURE
@@ -59,7 +59,7 @@ Prior evidence does not automatically validate the new release tag. Skips are no
 - [ ] Review final 17-file repository tree, Git history, license, relative links and absence of private data or secrets.
 - [ ] Sync modified GitHub source files into the corresponding **existing** Google Drive project originals; create only the new `DISCLOSURE` inside the same project code root; read back files and compare SHA-256. Keep private STATUS outside GitHub.
 - [ ] Run `npm run check` and `npm test` on Node 22/24 across Windows, Ubuntu and macOS (six CI jobs). Report PASS/FAIL/SKIP separately.
-- [ ] Run GitHub preview workflow for 0.1.0-preview.2; prove the npm archive contains exactly the nine files listed above; check CLI `--version` and policy metadata.
+- [ ] Run GitHub preview workflow for 0.1.0-preview.2; prove the npm archive contains exactly the ten files listed above; check CLI `--version` and policy metadata.
 - [ ] After all checks pass, squash-merge the review branch into `main`; record exact SHA.
 - [ ] Verify GitHub Actions generated prerelease `v0.1.0-preview.2` and its automatic source ZIP/tar.gz. Do not alter the original `v0.1.0-preview.1` tag or release.
 - [ ] Record results and remaining limitations in the **private** project STATUS.
@@ -69,7 +69,7 @@ Prior evidence does not automatically validate the new release tag. Skips are no
 - [ ] Confirm official registry package/name status and logged-in owner `npm whoami`.
 - [ ] Verify 2FA is enabled and the interactive publishing session enforces 2FA. Do NOT use direct OIDC or a bypass-2FA token for this dual-use package.
 - [ ] Check out the exact immutable GitHub tag `v0.1.0-preview.2` in the authorized local project or verified release checkout.
-- [ ] Re-run version, tests, license/disclosure check, `npm pack --dry-run --json --ignore-scripts`, and compare exactly nine paths.
+- [ ] Re-run version, tests, license/disclosure check, `npm pack --dry-run --json --ignore-scripts`, and compare exactly ten paths.
 - [ ] Publish with an interactive 2FA challenge only: `npm publish --access public --tag preview --registry https://registry.npmjs.org/`.
 - [ ] Independently verify `npm view reparse-lens@preview`, published version, tarball integrity and `npm install -g reparse-lens@preview` / `reparse-lens --version`.
 - [ ] Update the private STATUS; if any check fails, stop and document the exact failure. No stable `latest`, second package name, bypass token or unrelated GitHub tag.

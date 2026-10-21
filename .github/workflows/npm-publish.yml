@@ -32,7 +32,7 @@ jobs:
         with:
           node-version: "24"
           package-manager-cache: false
-      - name: Verify checks, dual-use declaration, and nine-file package
+      - name: Verify checks, dual-use declaration, and ten-file package
         run: |
           npm run check
           npm test
@@ -42,7 +42,7 @@ jobs:
           import { readFileSync } from 'node:fs';
           const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
           const entry = JSON.parse(readFileSync(process.env.RUNNER_TEMP + '/reparse-npm-pack.json', 'utf8'))[0];
-          const expected = ['DISCLOSURE','LICENSE','README.md','SECURITY.md','docs/FAQ.md','docs/THREAT_MODEL.md','package.json','src/cli.mjs','src/scanner.mjs'].sort();
+          const expected = ['DISCLOSURE','LICENSE','README.md','SECURITY.md','docs/FAQ.md','docs/JSON_API.md','docs/THREAT_MODEL.md','package.json','src/cli.mjs','src/scanner.mjs'].sort();
           if (pkg.name !== 'reparse-lens' || pkg.version !== '0.1.0-preview.2' || pkg.private !== false || pkg.publishConfig?.tag !== 'preview' || pkg.contentPolicy?.class !== 'dual-use') throw Error('Manifest does not meet the preview/dual-use policy contract');
           if (JSON.stringify(entry.files.map(f => f.path).sort()) !== JSON.stringify(expected)) throw Error('Unexpected npm package contents');
           if (!readFileSync('DISCLOSURE', 'utf8').includes('Dual-Use Disclosure')) throw Error('Root DISCLOSURE not found');

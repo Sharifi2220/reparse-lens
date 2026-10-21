@@ -1,6 +1,6 @@
 # Reparse Lens — Developer FAQ
 
-**Current stage:** `0.1.0-preview.2`, experimental and advisory-only. A scan is a snapshot of selected metadata, **never** permission for an agent or script to operate on a workspace.
+**Current stage:** `0.1.0-preview.2`, experimental and advisory-only. A scan is a snapshot of selected metadata, **never** permission for an agent or script to operate on a workspace. See the [JSON interface reference](JSON_API.md) before integrating reports into scripts.
 
 ## What problem does it solve?
 

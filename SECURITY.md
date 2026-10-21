@@ -28,8 +28,8 @@ Because filesystem scope mapping may be relevant to security research, the npm p
 
 ## Report a vulnerability privately
 
-Send a concise report to **[akkbkk10@gmail.com](mailto:akkbkk10@gmail.com)**. Include the version, OS/filesystem, Node.js version, command, expected/actual result, and a **synthetic** minimal reproduction. Omit real credentials, private paths, personal data and customer workspaces.
+Send a concise report to **GitHub's private vulnerability reporting channel**. Include the version, OS/filesystem, Node.js version, command, expected/actual result, and a **synthetic** minimal reproduction. Omit real credentials, private paths, personal data and customer workspaces.
 
 Do **not** publish sensitive exploit details or live secrets in GitHub issues. If GitHub private vulnerability reporting is enabled, it may be used as another private route. This project does not promise a response SLA or bounty.
 
-For source-level boundaries, see [README](README.md) and [Threat model](docs/THREAT_MODEL.md). For Git for Windows issues, see the upstream [security policy](https://github.com/git-for-windows/git/security/policy).
+For the machine-readable contract, see [JSON interface](docs/JSON_API.md). For source-level boundaries, see [README](README.md) and [Threat model](docs/THREAT_MODEL.md). For Git for Windows issues, see the upstream [security policy](https://github.com/git-for-windows/git/security/policy).
