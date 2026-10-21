@@ -1,0 +1,60 @@
+Reparse Lens – Dual-Use Disclosure
+====================================
+
+Package: reparse-lens
+Version: 0.1.0-preview.2
+License: Mozilla Public License 2.0 (MPL-2.0)
+Project: https://github.com/Sharifi2220/reparse-lens
+
+Purpose and intended legitimate use
+-----------------------------------
+Reparse Lens is an experimental, offline-by-design Node.js command-line
+diagnostic that inspects filesystem metadata in a directory selected by its
+operator. It helps developers, build maintainers and users of coding agents
+notice observable symbolic links, Windows junctions and path-scope
+anomalies that can be absent from Git's ordinary file inventory. It can also
+report Git worktree pointer uncertainty, hardlink ambiguity and optional
+Windows filename portability conflicts.
+
+This is a defensive auditing, debugging and compatibility tool. Its intended
+use is on systems and directories the operator owns or is authorized to
+inspect. It does not deliberately read ordinary file contents, follow
+recognized links into their targets, execute Git or arbitrary commands, scan
+networks, exploit vulnerabilities or transmit findings to a remote service.
+
+Why this declaration is present
+-------------------------------
+Filesystem-link discovery and scope analysis are security-relevant techniques.
+Results could be misused to identify interesting filesystem structures or
+to plan unauthorized access attempts. This package is therefore voluntarily
+declared as dual-use under npm's policy to provide transparency to maintainers,
+users and registry reviewers. The declaration is not a security certification
+or authorization to use the tool against third-party systems.
+
+Limits and safety
+-----------------
+Reparse Lens is metadata-only and advisory: every machine-readable scan
+sets authorization=false. A detected link can produce BLOCKED (exit 2),
+but BLOCKED is a review signal, not a conclusion of maliciousness.
+Even a clean Windows scan remains INCOMPLETE (exit 3), because exhaustive
+native NTFS reparse-tag inspection is not implemented. The scanner cannot
+prevent time-of-check/time-of-use changes, enforce filesystem permissions,
+guarantee containment of another process, or certify a workspace safe.
+Cloud, network/UNC and unusual filesystem providers may be incompletely
+classified. Filesystem metadata can itself be sensitive; do not publish
+unredacted reports containing private paths. Node.js and the operating system
+may access remote resources while resolving metadata on network or cloud
+filesystems even though the CLI has no network client.
+
+Reparse Lens must never be used as a sandbox, access-control gate, malware
+detector, or a substitute for platform security controls. Run it only with
+appropriate authorization, review reported paths manually and follow the
+documentation in README.md, SECURITY.md and docs/THREAT_MODEL.md.
+
+Reporting and review
+--------------------
+Please disclose potentially exploitable findings privately according to
+SECURITY.md. Do not include real secrets, private file inventories or
+unauthorized access examples in public reports.
+
+npm dual-use policy: https://docs.npmjs.com/policies/dual-use/
