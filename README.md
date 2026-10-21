@@ -2,7 +2,7 @@
 
 **See filesystem entries that Git status may miss.** Reparse Lens is a dependency-free Node.js command-line inspector for workspace links and metadata anomalies. It can detect ordinary symlinks and Windows junctions even when they are empty, ignored or untracked by Git. It also reports unresolved Git metadata pointers, hardlink ambiguity and optional Windows filename compatibility issues.
 
-**Release stage:** `0.1.0-preview.1` — experimental, **advisory only**. Reparse Lens is **not** a sandbox, access-control mechanism, antivirus product, complete NTFS reparse-point scanner or permission decision. Every scan result sets `authorization: false`.
+**Release stage:** `0.1.0-preview.2` — experimental, **advisory only**. Reparse Lens is **not** a sandbox, access-control mechanism, antivirus product, complete NTFS reparse-point scanner or permission decision. Every scan result sets `authorization: false`.
 
 ## Start in five minutes
 
@@ -56,7 +56,7 @@ Avoid treating any exit code as permission to let an automation read, execute, m
 
 ## Reading the report
 
-The JSON report contains `schemaVersion`, `status`, `authorization`, `platform`, `entriesChecked`, `excludedGitInternals`, `limits`, `portabilityChecked`, `summary`, `findings` and `warnings`.
+The JSON report contains `schemaVersion`, `status`, `authorization`, `platform`, `entriesChecked`, `excludedGitInternals`, `scanComplete`, `scanLimit`, `limits`, `portabilityChecked`, `summary`, `findings` and `warnings`. See the [JSON interface reference](docs/JSON_API.md) for field meanings, finding shapes and scripting guidance.
 
 Each finding has a diagnostic `code` and a bounded displayed `path`; some include `detail` for a sanitized I/O error. The `summary` counts `linksAndEscapes`, `portability`, `gitMetadata` and `other` findings, plus `totalFindings`, `shownFindings` and `omittedFindings`.
 
@@ -103,7 +103,7 @@ The `scan` and `doctor` commands do not intentionally read file bodies, launch G
 
 ## Installing the preview
 
-**GitHub Release:** download the Source code ZIP for `v0.1.0-preview.1` from the [Releases page](https://github.com/Sharifi2220/reparse-lens/releases), extract it and run `node src/cli.mjs --help`. This requires Node.js 22+. GitHub automatically supplies source ZIP and tar.gz archives; no binary `.exe` is included.
+**GitHub Release:** download the Source code ZIP for `v0.1.0-preview.2` from the [Releases page](https://github.com/Sharifi2220/reparse-lens/releases), extract it and run `node src/cli.mjs --help`. This requires Node.js 22+. GitHub automatically supplies source ZIP and tar.gz archives; no binary `.exe` is included.
 
 **npm (only after registry publication):** run `npm install -g reparse-lens@preview` and then `reparse-lens --version`. The `preview` dist-tag intentionally separates this experimental build from a future stable `latest` release. No privileged native installer is needed.
 
@@ -115,16 +115,20 @@ npm test
 npm pack --dry-run --json --ignore-scripts
 ```
 
-The public package preview includes only eight files: `LICENSE`, `README.md`, `SECURITY.md`, `docs/FAQ.md`, `docs/THREAT_MODEL.md`, `package.json`, `src/cli.mjs` and `src/scanner.mjs`. This list is separate from the larger public GitHub source repository (which also contains tests, CI and contribution materials). Internal validation notes and local development instructions are excluded.
+The public npm package preview contains exactly ten files: `DISCLOSURE`, `LICENSE`, `README.md`, `SECURITY.md`, `docs/FAQ.md`, `docs/JSON_API.md`, `docs/THREAT_MODEL.md`, `package.json`, `src/cli.mjs` and `src/scanner.mjs`. This list is separate from the larger public GitHub source repository (which also contains tests, CI and contribution materials). Internal validation notes and local development instructions are excluded.
 
-**Verification as of 2026-10-21:** The 25-case preview test suite ran in a six-job GitHub Actions matrix (Node 22/24 on Windows, Ubuntu and macOS), all jobs successful: per job Windows 21 PASS / 4 SKIP, Ubuntu 25 PASS / 0 SKIP, macOS 24 PASS / 1 SKIP. Windows Node 24 host acceptance also reported 21 PASS / 4 SKIP and a real junction detected as `BLOCKED`; a clean Windows control remained `INCOMPLETE`. Skips are coverage gaps, not passing tests. These are dated evidence for the tested revision; rerun CI after changing the release candidate.
+**Verification as of 2026-10-21:** The 27-case preview test suite ran successfully in a six-job GitHub Actions matrix on Node 22/24 across Windows, Ubuntu and macOS. Platform-specific fixture skips remain documented coverage gaps, not passing security checks. The local Windows acceptance run also confirmed that a real junction is `BLOCKED` while a clean control remains `INCOMPLETE`. These are dated results for the tested revision; rerun CI after changing the release candidate.
 
-See [Contributing](CONTRIBUTING.md), [Security reporting](SECURITY.md) and the [Release checklist](RELEASE_CHECKLIST.md). The preview package has a deliberately restricted eight-file npm allowlist. **npm registry publication is separate from the GitHub source release.** Until a verified npm package exists, use the GitHub source ZIP/CLI. After npm publication, install the prerelease explicitly with `npm install -g reparse-lens@preview` (not `@latest`).
+See [Contributing](CONTRIBUTING.md), [Security reporting](SECURITY.md), the [JSON interface reference](docs/JSON_API.md) and the [Release checklist](RELEASE_CHECKLIST.md). The preview package has a deliberately restricted ten-file npm allowlist. **npm registry publication is separate from the GitHub source release.** Until a verified npm package exists, use the GitHub source ZIP/CLI. After npm publication, install the prerelease explicitly with `npm install -g reparse-lens@preview` (not `@latest`).
+
+## npm dual-use content and publishing
+
+The npm package declares `contentPolicy.class: dual-use` and includes a root [DISCLOSURE](DISCLOSURE) explaining its legitimate use, foreseeable misuse and known limits. This is a transparency declaration under the [npm Dual-Use Content Policy](https://docs.npmjs.com/policies/dual-use/), not a classification as malware or proof of security. **Direct publication requires interactive 2FA**. The repository's manual npm workflow checks package contents only and does not publish or handle tokens. Publishing to the `preview` dist-tag is a separate authenticated step; until a registry entry is independently verified, use the GitHub source archive.
 
 ## License, support and references
 
 Licensed under [Mozilla Public License 2.0](LICENSE), which permits commercial use subject to its terms. This project does not promise a commercial service, security certification or support SLA.
 
-General questions and confidential vulnerability reports: [akkbkk10@gmail.com](mailto:akkbkk10@gmail.com). Do not send real credentials, personal filesystem inventories or private workspace content.
+General questions and confidential vulnerability reports: GitHub's private vulnerability reporting channel. Do not send real credentials, personal filesystem inventories or private workspace content.
 
 Primary documentation: [Node.js filesystem API](https://nodejs.org/api/fs.html) · [Git status](https://git-scm.com/docs/git-status) · [Git worktrees](https://git-scm.com/docs/git-worktree) · [Microsoft Windows reparse tags](https://learn.microsoft.com/en-us/windows/win32/fileio/reparse-point-tags) · [Windows filename rules](https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file).

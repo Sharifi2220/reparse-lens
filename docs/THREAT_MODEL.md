@@ -1,4 +1,4 @@
-# Technical design and threat model — Reparse Lens 0.1.0-preview.1
+# Technical design and threat model — Reparse Lens 0.1.0-preview.2
 
 ## Purpose and boundary
 
@@ -14,6 +14,7 @@ It does **not** enforce an access-control policy, sandbox another process, verif
 | `src/scanner.mjs` | Validate root, incrementally enumerate filesystem metadata, classify findings, record incomplete coverage |
 | `test/scanner.test.mjs` | Synthetic cross-platform regression tests; fixture creation/teardown |
 | `package.json` | Node 22+ engine, CLI entry point, script commands and explicit npm file allowlist |
+| `docs/JSON_API.md` | Stable schema-v1 field reference and integration guidance for JSON consumers |
 | `SECURITY.md` | Supported security claims and private vulnerability reporting |
 
 The scanner uses built-in `node:fs` and `node:path`: `lstatSync`, `realpathSync.native`, `opendirSync`/`readSync`, `resolve`, `relative` and path-root utilities.
@@ -67,7 +68,7 @@ Do not point this experimental inspector at privileged or sensitive trees withou
 
 ## Verification and evidence limits
 
-As of 2026-10-21, the 25-case source passed GitHub Actions run `39581094614` on Node 22 and 24 under Windows/Ubuntu/macOS (six successful jobs; Windows 21 PASS/4 SKIP, Ubuntu 25/0, macOS 24/1 per job). Windows Node 24 host tests also reported 21/0/4; a real NTFS junction was identified as `BLOCKED` with no target traversal in that test. This does **not** establish native tag completeness, atomic traversal, a security certification or correctness for all host filesystems.
+As of 2026-10-21, the 27-case source passed GitHub Actions run `39624538818` on Node 22 and 24 under Windows/Ubuntu/macOS (six successful jobs with documented fixture SKIPs). Windows Node 24 host tests also confirmed a real NTFS junction as `BLOCKED` with no target traversal in that test. This does **not** establish native tag completeness, atomic traversal, a security certification or correctness for all host filesystems.
 
 Any source or workflow change requires fresh verification. The preview remains experimental; before a stable/safety-sensitive release, independently review native tag/handle behavior, threats to the checking process and unresolved platform fixtures.
 

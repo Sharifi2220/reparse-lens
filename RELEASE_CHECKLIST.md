@@ -1,10 +1,8 @@
-# Reparse Lens 0.1.0-preview.1 — GitHub Release and npm checklist
+# Release checklist — Reparse Lens 0.1.0-preview.2
 
-This release is **experimental and advisory-only**. The GitHub repository source was already made public before this packaging work. An official GitHub prerelease and an npm package are **separate publication events** with separate verification.
+Reparse Lens is an **experimental, advisory-only** filesystem metadata inspector. This version adds a voluntary npm dual-use declaration and the required disclosure; it does not add new scanner security capabilities.
 
-## Allowlisted public repository source
-
-The previous GitHub repository had 14 public files. This preview adds precisely two GitHub Actions workflows for release/publishing. All **16 intended repository paths**:
+## Exact public source allowlist (18 files)
 
 ```text
 .gitattributes
@@ -13,6 +11,7 @@ The previous GitHub repository had 14 public files. This preview adds precisely 
 .github/workflows/release-preview.yml
 .gitignore
 CONTRIBUTING.md
+DISCLOSURE
 LICENSE
 README.md
 RELEASE_CHECKLIST.md
@@ -25,13 +24,12 @@ src/scanner.mjs
 test/scanner.test.mjs
 ```
 
-Do not add private internal project records, Codex instructions, validation data, backups, secrets, local path inventories, personal information or temporary test fixtures. Verify both the Git history and source tree before publishing a new artifact. Workflow permissions are scoped to their specific tasks.
+No internal STATUS, private workspace contents, backups, agent plans, personal paths, credentials or unrelated project files belong in the public tree or distributed archive. Check the final reachable Git history and diff, not just the working tree.
 
-## Eight-file npm allowlist
-
-Only the following files are permitted in `npm pack --dry-run --json --ignore-scripts`:
+## Exact npm distribution allowlist (10 files)
 
 ```text
+DISCLOSURE
 LICENSE
 README.md
 SECURITY.md
@@ -42,41 +40,40 @@ src/cli.mjs
 src/scanner.mjs
 ```
 
-The preview manifest uses `"name": "reparse-lens"`, `"version": "0.1.0-preview.1"`, `"private": false`, `"publishConfig.tag": "preview"` and requires Node 22+. The bin entry remains `reparse-lens -> ./src/cli.mjs`.
+Package contract: `name: reparse-lens`, `version: 0.1.0-preview.2`, `private: false`, `publishConfig.tag: preview`, `publishConfig.access: public`, Node 22+, and `bin.reparse-lens = ./src/cli.mjs`.
 
-**The manifest allows publication but does not mean the package exists in the npm registry.** Publishing to `preview` must never silently promote this build to the `latest` dist-tag.
+**npm policy:** The `contentPolicy.class = dual-use` declaration and root `DISCLOSURE` are required for this security-relevant preview. npm's [Dual-Use Content Policy](https://docs.npmjs.com/policies/dual-use/) requires **2FA enforcement for publication**. Direct publication is allowed only with interactive 2FA; a token that bypasses 2FA or direct OIDC trusted publishing must NOT be used. The existing `.github/workflows/npm-publish.yml` now performs only **read-only package preflight checks**. For future versions, maintain the dual-use declaration and disclosure unless npm's Trust & Safety team approves their removal.
 
-## Previously established source evidence
+## Source and test evidence already established
 
-- [x] MPL-2.0 full license and security/disclosure docs included.
-- [x] Windows Node 24 host acceptance: `npm run check` PASS, 25 synthetic tests with 21 PASS, 0 FAIL, 4 SKIP.
-- [x] Actual Windows junction -> `BLOCKED` / exit 2 / `authorization: false`; clean Windows scan -> `INCOMPLETE` / exit 3.
-- [x] Public baseline GitHub Actions run `39602926526` on Node 22/24 × Windows/macOS/Ubuntu completed 6/6 SUCCESS.
-- [x] Prior npm dry-run listed exactly eight intended runtime files.
+- [x] Earlier GitHub source preview `v0.1.0-preview.1` was publicly released.
+- [x] The tested scanner behavior is conservative: recognized Windows junction -> `BLOCKED`/exit 2; clean Windows scan -> `INCOMPLETE`/exit 3; `authorization: false`.
+- [x] A previous Windows Node 24.15.0 host run reported 21 PASS, 0 FAIL, 4 SKIP; prior six-platform matrix 6/6 success.
+- [x] Root `DISCLOSURE` and explicit `contentPolicy.class = dual-use` were added to the new candidate branch.
+- [x] The npm publisher workflow has been converted into a token-free preflight, with **no direct npm publish** or registry credentials.
 
-These are **dated historical checks**. Re-run on the actual preview commit; do not count SKIP as PASS.
+Prior evidence does not automatically validate the new release tag. Skips are not passing security checks.
 
-## Gate A: First GitHub prerelease
+## A. Preview.2 GitHub source release gate
 
-- [ ] Synchronize changed release files to the authoritative project root and read back bytes/hashes before the release is considered complete.
-- [ ] Run 25 synthetic tests on all six cross-platform CI jobs on the final PR head.
-- [ ] Pass the dedicated preview packaging audit (version check, `doctor --json`, eight-file `npm pack` inspection).
-- [ ] Validate the final exact 16-file tree, whole visible Git history, code/license/docs and private-data patterns.
-- [ ] Merge reviewed PR into `main` by squash and verify its SHA.
-- [ ] Verify that `.github/workflows/release-preview.yml` created **only one** `v0.1.0-preview.1` GitHub prerelease via a `main` push, with GitHub's built-in source ZIP and tar.gz.
-- [ ] Verify public release URL, tag target SHA, notes, and automatic download links. No binary executable is promised.
+- [ ] Review final 17-file repository tree, Git history, license, relative links and absence of private data or secrets.
+- [ ] Sync modified GitHub source files into the corresponding **existing** Google Drive project originals; create only the new `DISCLOSURE` inside the same project code root; read back files and compare SHA-256. Keep private STATUS outside GitHub.
+- [ ] Run `npm run check` and `npm test` on Node 22/24 across Windows, Ubuntu and macOS (six CI jobs). Report PASS/FAIL/SKIP separately.
+- [ ] Run GitHub preview workflow for 0.1.0-preview.2; prove the npm archive contains exactly the ten files listed above; check CLI `--version` and policy metadata.
+- [ ] After all checks pass, squash-merge the review branch into `main`; record exact SHA.
+- [ ] Verify GitHub Actions generated prerelease `v0.1.0-preview.2` and its automatic source ZIP/tar.gz. Do not alter the original `v0.1.0-preview.1` tag or release.
+- [ ] Record results and remaining limitations in the **private** project STATUS.
 
-## Gate B: First npm publish — independent of GitHub
+## B. Separate npm first-publication gate
 
-- [ ] Query the official npm registry from an internet-connected runner to establish whether `reparse-lens` exists. A 404 is **not** a reservation or an ownership guarantee.
-- [ ] Confirm an authenticated npm publisher has rights to `reparse-lens`. The first package release generally needs a logged-in npm owner or authorized publish token; do not assume GitHub OIDC trusted publishing is already linked to an uncreated package.
-- [ ] With the GitHub tag verified, configure an authorized short-lived automation token or an already established npm trusted publisher (see npm's current security documentation). Never paste tokens into issues or logs.
-- [ ] Trigger the **manual only** `.github/workflows/npm-publish.yml` workflow using input `confirm_tag: v0.1.0-preview.1`; it checks out that tag and publishes with `--tag preview` only.
-- [ ] Verify the actual registry URL and `npm view reparse-lens@preview`; test `npm install -g reparse-lens@preview` and `reparse-lens --version` in a clean environment.
-- [ ] Record publisher, tarball integrity, provenance (if present), final package version, dist-tag and CI logs in the private project release record. Do not claim npm was published from a successful dry-run alone.
+- [ ] Confirm official registry package/name status and logged-in owner `npm whoami`.
+- [ ] Verify 2FA is enabled and the interactive publishing session enforces 2FA. Do NOT use direct OIDC or a bypass-2FA token for this dual-use package.
+- [ ] Check out the exact immutable GitHub tag `v0.1.0-preview.2` in the authorized local project or verified release checkout.
+- [ ] Re-run version, tests, license/disclosure check, `npm pack --dry-run --json --ignore-scripts`, and compare exactly ten paths.
+- [ ] Publish with an interactive 2FA challenge only: `npm publish --access public --tag preview --registry https://registry.npmjs.org/`.
+- [ ] Independently verify `npm view reparse-lens@preview`, published version, tarball integrity and `npm install -g reparse-lens@preview` / `reparse-lens --version`.
+- [ ] Update the private STATUS; if any check fails, stop and document the exact failure. No stable `latest`, second package name, bypass token or unrelated GitHub tag.
 
-## Security/quality disclosures
+## Known limitations to preserve
 
-An `ADVISORY` scan is not authorization. Windows-native reparse-tag coverage is incomplete; a clean Windows scan remains `INCOMPLETE`. Metadata checking does not prevent TOCTOU races or protect against malicious concurrent processes; Git worktree pointers, hardlink aliases, cloud and UNC metadata may be unresolved. No independent safety certification is claimed.
-
-The product is a **free experimental developer preview**, not a sandbox, malware scanner or guaranteed workspace protection.
+No complete native NTFS reparse-tag inspection; no race-resistant TOCTOU or security sandbox; provider/cloud/UNC ambiguity; Git-worktree pointers are not parsed; hardlink aliases may be unknown; portability warnings can be heuristic. Treat reports as diagnostic evidence, not access authorization.

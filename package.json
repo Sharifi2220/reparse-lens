@@ -1,6 +1,6 @@
 {
   "name": "reparse-lens",
-  "version": "0.1.0-preview.1",
+  "version": "0.1.0-preview.2",
   "private": false,
   "type": "module",
   "description": "Offline workspace link and Windows path-compatibility diagnostics; advisory only",
@@ -35,7 +35,9 @@
     "README.md",
     "SECURITY.md",
     "docs/FAQ.md",
-    "docs/THREAT_MODEL.md"
+    "docs/THREAT_MODEL.md",
+    "DISCLOSURE",
+    "docs/JSON_API.md"
   ],
   "scripts": {
     "scan": "node src/cli.mjs scan .",
@@ -46,5 +48,8 @@
     "access": "public",
     "tag": "preview",
     "registry": "https://registry.npmjs.org/"
+  },
+  "contentPolicy": {
+    "class": "dual-use"
   }
 }

@@ -3,7 +3,7 @@
 // Advisory workspace scanner. This is not an authorization boundary.
 import { scanWorkspace } from './scanner.mjs';
 
-const VERSION = '0.1.0-preview.1';
+const VERSION = '0.1.0-preview.2';
 const HELP = [
   'Reparse Lens ' + VERSION,
   '',
@@ -89,6 +89,9 @@ function humanReport(report) {
     lines.push('  ' + f.code + ': ' + f.path + (f.detail ? ' (' + f.detail + ')' : ''));
   if (report.summary.omittedFindings)
     lines.push('Output limited: ' + report.summary.omittedFindings + ' additional findings not listed.');
+  if (!report.scanComplete && report.scanLimit)
+    lines.push('Scan coverage: INCOMPLETE — ' + report.scanLimit.kind + ' limit ' +
+      report.scanLimit.limit + ' reached; next path not checked: ' + report.scanLimit.nextPath);
   if (report.status === 'BLOCKED')
     lines.push('Action: inspect the listed paths. A link or path escape was detected.');
   if (report.status === 'INCOMPLETE')
@@ -122,3 +125,5 @@ try {
   process.stderr.write('REPARSE_LENS: ' + (e instanceof TypeError ? e.message : 'Unexpected scan failure') + '\n');
   process.exitCode = 64;
 }
+
+

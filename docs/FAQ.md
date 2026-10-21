@@ -1,6 +1,6 @@
 # Reparse Lens — Developer FAQ
 
-**Current stage:** `0.1.0-preview.1`, experimental and advisory-only. A scan is a snapshot of selected metadata, **never** permission for an agent or script to operate on a workspace.
+**Current stage:** `0.1.0-preview.2`, experimental and advisory-only. A scan is a snapshot of selected metadata, **never** permission for an agent or script to operate on a workspace. See the [JSON interface reference](JSON_API.md) before integrating reports into scripts.
 
 ## What problem does it solve?
 
@@ -59,7 +59,7 @@ node src/cli.mjs --help
 node src/cli.mjs scan .
 ```
 
-The npm package manifest now allows a separate, explicitly authorized preview publish with the `preview` dist-tag. This does **not** mean the package is already on npm. Download the GitHub source release until the registry page is verified; after publication use `npm install -g reparse-lens@preview`.
+The npm preview declares security-relevant dual-use functionality in `package.json` and the published root `DISCLOSURE`. This does **not** mean the package is already on npm. Direct publication requires an authorized npm session with interactive 2FA, and cannot be performed through the former token-only CI shortcut. Download the GitHub source release until the registry page is verified; after publication use `npm install -g reparse-lens@preview`.
 
 ## How do I report a bug safely?
 
@@ -67,7 +67,7 @@ Include OS/filesystem, Node version, command, expected status/exit, observed sta
 
 ## What has been tested, and what remains unknown?
 
-On 2026-10-21, 25 tests ran on GitHub Actions Node 22/24 × Windows, Ubuntu and macOS with all six jobs successful: Windows 21 PASS/4 SKIP, Ubuntu 25/0, macOS 24/1 **per job**. A real Windows host also confirmed a recognized junction is blocked and not intentionally traversed; the release-candidate scanner, CLI and 25-case test sources were synchronized with the release branch.
+On 2026-10-21, 27 test cases ran successfully in GitHub Actions on Node 22/24 × Windows, Ubuntu and macOS with all six jobs successful; platform fixture SKIPs remain explicit coverage gaps. A real Windows host also confirmed a recognized junction is blocked and not intentionally traversed; the release-candidate scanner, CLI and test sources were synchronized with the release branch.
 
 Unknown: complete Windows-native reparse-tag coverage, atomic traversal/no-follow handle guarantees, unrestricted cloud/UNC cases, and an external independent security certification. These are disclosed scope limits, not claims of completed protection. See the [technical design](../README.md#technical-design), [Threat model](THREAT_MODEL.md) and [Release checklist](../RELEASE_CHECKLIST.md).
 
