@@ -1,16 +1,18 @@
 name: GitHub preview release
-# Audited one-time v0.1.0-preview.1 publication. Subsequent pushes are idempotent.
+# Audited one-time v0.1.0-preview.2 publication. Subsequent pushes are idempotent.
 
 on:
   pull_request:
     branches: [main]
     paths:
       - "package.json"
+      - "DISCLOSURE"
       - ".github/workflows/release-preview.yml"
   push:
     branches: [main]
     paths:
       - "package.json"
+      - "DISCLOSURE"
       - ".github/workflows/release-preview.yml"
 
 permissions:
@@ -33,19 +35,20 @@ jobs:
         run: |
           npm run check
           npm test
-          test "$(node src/cli.mjs --version)" = "0.1.0-preview.1"
+          test "$(node src/cli.mjs --version)" = "0.1.0-preview.2"
           node src/cli.mjs doctor --json
-      - name: Enforce exact eight-file npm package
+      - name: Enforce exact nine-file npm package
         run: |
           npm pack --dry-run --json --ignore-scripts > "${RUNNER_TEMP}/reparse-lens-pack.json"
           node --input-type=module <<'JS'
           import { readFileSync } from 'node:fs';
           const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
           const files = JSON.parse(readFileSync(process.env.RUNNER_TEMP + '/reparse-lens-pack.json','utf8'))[0].files.map(x => x.path).sort();
-          const allow = ['LICENSE','README.md','SECURITY.md','docs/FAQ.md','docs/THREAT_MODEL.md','package.json','src/cli.mjs','src/scanner.mjs'].sort();
-          if (pkg.version !== '0.1.0-preview.1' || pkg.name !== 'reparse-lens' || pkg.private !== false || pkg.publishConfig?.tag !== 'preview') throw Error('Preview package metadata mismatch');
+          const allow = ['DISCLOSURE','LICENSE','README.md','SECURITY.md','docs/FAQ.md','docs/THREAT_MODEL.md','package.json','src/cli.mjs','src/scanner.mjs'].sort();
+          if (pkg.version !== '0.1.0-preview.2' || pkg.name !== 'reparse-lens' || pkg.private !== false || pkg.publishConfig?.tag !== 'preview' || pkg.contentPolicy?.class !== 'dual-use') throw Error('Preview package metadata mismatch');
           if (JSON.stringify(files) !== JSON.stringify(allow)) throw Error('Unexpected package archive contents: ' + JSON.stringify(files));
-          console.log('Verified exactly eight intended npm files.');
+          if (!readFileSync('DISCLOSURE', 'utf8').includes('Dual-Use Disclosure')) throw Error('Root DISCLOSURE is missing or invalid');
+          console.log('Verified exactly nine intended npm files and dual-use metadata.');
           JS
       - name: Check npm registry package name (informational)
         run: |
@@ -75,7 +78,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          TAG: v0.1.0-preview.1
+          TAG: v0.1.0-preview.2
         run: |
           set -eu
           if gh release view "$TAG" --repo "$GH_REPO" >/dev/null 2>&1; then
@@ -87,9 +90,9 @@ jobs:
             exit 1
           fi
           cat > "${RUNNER_TEMP}/reparse-preview-notes.md" <<'NOTES'
-          ## Reparse Lens 0.1.0-preview.1
+          ## Reparse Lens 0.1.0-preview.2
 
-          First experimental source preview of the local, zero-dependency Node.js filesystem metadata inspector.
+          Second experimental source preview of the local, zero-dependency Node.js filesystem metadata inspector. This release updates metadata and disclosure for npm's dual-use content policy; it does not claim a new security capability.
 
           ### What it does
           - Detects observable symlinks, Windows directory junctions and filesystem scope anomalies that Git inventory may miss.
@@ -105,10 +108,10 @@ jobs:
           ```
 
           ### Validation and limitations
-          Release workflow checks source syntax, 25 synthetic tests and an eight-file package allowlist. Cross-platform CI runs on Node 22/24 under Windows, Ubuntu and macOS; fixture SKIPs are not PASS.
+          Release workflow checks source syntax, 25 synthetic tests and an nine-file package allowlist. Cross-platform CI runs on Node 22/24 under Windows, Ubuntu and macOS; fixture SKIPs are not PASS.
 
           **Experimental, advisory only**: clean Windows scans remain `INCOMPLETE` / exit 3 due to incomplete native NTFS reparse tag coverage; observed junctions are `BLOCKED` / exit 2. No TOCTOU protection, sandboxing, malware detection or security certification. See SECURITY.md and docs/THREAT_MODEL.md.
 
-          npm distribution is a separate publication. Until npm is verifiably available, use the release ZIP/source CLI.
+          The package now explicitly declares dual-use content and includes DISCLOSURE. Direct npm publication is separate and requires interactive, enforced 2FA; no token-bypass or direct OIDC automated publish. Until npm is verifiably available, use the release ZIP/source CLI.
           NOTES
-          gh release create "$TAG" --repo "$GH_REPO" --target "$GITHUB_SHA" --title "Reparse Lens 0.1.0-preview.1 (experimental)" --notes-file "${RUNNER_TEMP}/reparse-preview-notes.md" --prerelease --latest=false
+          gh release create "$TAG" --repo "$GH_REPO" --target "$GITHUB_SHA" --title "Reparse Lens 0.1.0-preview.2 (experimental)" --notes-file "${RUNNER_TEMP}/reparse-preview-notes.md" --prerelease --latest=false
