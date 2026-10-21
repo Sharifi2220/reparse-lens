@@ -3,7 +3,7 @@
 // Advisory workspace scanner. This is not an authorization boundary.
 import { scanWorkspace } from './scanner.mjs';
 
-const VERSION = '0.1.0-preview.1';
+const VERSION = '0.1.0-preview.2';
 const HELP = [
   'Reparse Lens ' + VERSION,
   '',
