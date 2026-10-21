@@ -2,7 +2,7 @@
 
 **See filesystem entries that Git status may miss.** Reparse Lens is a dependency-free Node.js command-line inspector for workspace links and metadata anomalies. It can detect ordinary symlinks and Windows junctions even when they are empty, ignored or untracked by Git. It also reports unresolved Git metadata pointers, hardlink ambiguity and optional Windows filename compatibility issues.
 
-**Release stage:** `0.1.0-dev` — experimental, **advisory only**. Reparse Lens is **not** a sandbox, access-control mechanism, antivirus product, complete NTFS reparse-point scanner or permission decision. Every scan result sets `authorization: false`.
+**Release stage:** `0.1.0-preview.1` — experimental, **advisory only**. Reparse Lens is **not** a sandbox, access-control mechanism, antivirus product, complete NTFS reparse-point scanner or permission decision. Every scan result sets `authorization: false`.
 
 ## Start in five minutes
 
@@ -101,6 +101,12 @@ A root `.git` directory is detected, then its internals are excluded with a warn
 
 The `scan` and `doctor` commands do not intentionally read file bodies, launch Git/agents, send telemetry or write to the scanned tree. The test suite **does** create and remove disposable fixtures. Scanning a remote, cloud-backed or mapped filesystem may nevertheless cause operating-system/provider I/O outside the CLI's control.
 
+## Installing the preview
+
+**GitHub Release:** download the Source code ZIP for `v0.1.0-preview.1` from the [Releases page](https://github.com/Sharifi2220/reparse-lens/releases), extract it and run `node src/cli.mjs --help`. This requires Node.js 22+. GitHub automatically supplies source ZIP and tar.gz archives; no binary `.exe` is included.
+
+**npm (only after registry publication):** run `npm install -g reparse-lens@preview` and then `reparse-lens --version`. The `preview` dist-tag intentionally separates this experimental build from a future stable `latest` release. No privileged native installer is needed.
+
 ## Develop and verify
 
 ```sh
@@ -113,7 +119,7 @@ The public package preview includes only eight files: `LICENSE`, `README.md`, `S
 
 **Verification as of 2026-10-21:** The 25-case preview test suite ran in a six-job GitHub Actions matrix (Node 22/24 on Windows, Ubuntu and macOS), all jobs successful: per job Windows 21 PASS / 4 SKIP, Ubuntu 25 PASS / 0 SKIP, macOS 24 PASS / 1 SKIP. Windows Node 24 host acceptance also reported 21 PASS / 4 SKIP and a real junction detected as `BLOCKED`; a clean Windows control remained `INCOMPLETE`. Skips are coverage gaps, not passing tests. These are dated evidence for the tested revision; rerun CI after changing the release candidate.
 
-See [Contributing](CONTRIBUTING.md), [Security reporting](SECURITY.md) and the [Release checklist](RELEASE_CHECKLIST.md). The package manifest intentionally has `"private": true`: **there is no npm publication**; use the source CLI.
+See [Contributing](CONTRIBUTING.md), [Security reporting](SECURITY.md) and the [Release checklist](RELEASE_CHECKLIST.md). The preview package has a deliberately restricted eight-file npm allowlist. **npm registry publication is separate from the GitHub source release.** Until a verified npm package exists, use the GitHub source ZIP/CLI. After npm publication, install the prerelease explicitly with `npm install -g reparse-lens@preview` (not `@latest`).
 
 ## License, support and references
 

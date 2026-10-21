@@ -1,4 +1,4 @@
-# Technical design and threat model — Reparse Lens 0.1.0-dev
+# Technical design and threat model — Reparse Lens 0.1.0-preview.1
 
 ## Purpose and boundary
 

@@ -1,7 +1,7 @@
 {
   "name": "reparse-lens",
-  "version": "0.1.0-dev",
-  "private": true,
+  "version": "0.1.0-preview.1",
+  "private": false,
   "type": "module",
   "description": "Offline workspace link and Windows path-compatibility diagnostics; advisory only",
   "license": "MPL-2.0",
@@ -41,5 +41,10 @@
     "scan": "node src/cli.mjs scan .",
     "test": "node --test",
     "check": "node --check src/scanner.mjs && node --check src/cli.mjs && node --check test/scanner.test.mjs && node src/cli.mjs --version"
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "preview",
+    "registry": "https://registry.npmjs.org/"
   }
 }
