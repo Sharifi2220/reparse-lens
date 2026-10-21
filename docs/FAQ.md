@@ -59,7 +59,7 @@ node src/cli.mjs --help
 node src/cli.mjs scan .
 ```
 
-The npm preview declares security-relevant dual-use functionality in `package.json` and the published root `DISCLOSURE`. This does **not** mean the package is already on npm. Direct publication requires an authorized npm session with interactive 2FA, and cannot be performed through the former token-only CI shortcut. Download the GitHub source release until the registry page is verified; after publication use `npm install -g reparse-lens@preview`.
+The npm preview declares security-relevant dual-use functionality in `package.json` and the published root `DISCLOSURE`. The `0.1.0-preview.2` package is published on npm with the `preview` dist-tag. Direct publication required an authorized npm session with interactive 2FA and cannot be performed through the former token-only CI shortcut. Install it with `npm install -g reparse-lens@preview` or use the GitHub source release.
 
 ## How do I report a bug safely?
 

@@ -105,7 +105,7 @@ The `scan` and `doctor` commands do not intentionally read file bodies, launch G
 
 **GitHub Release:** download the Source code ZIP for `v0.1.0-preview.2` from the [Releases page](https://github.com/Sharifi2220/reparse-lens/releases), extract it and run `node src/cli.mjs --help`. This requires Node.js 22+. GitHub automatically supplies source ZIP and tar.gz archives; no binary `.exe` is included.
 
-**npm (only after registry publication):** run `npm install -g reparse-lens@preview` and then `reparse-lens --version`. The `preview` dist-tag intentionally separates this experimental build from a future stable `latest` release. No privileged native installer is needed.
+**npm preview:** install the published experimental build with `npm install -g reparse-lens@preview` and then run `reparse-lens --version`. The `preview` dist-tag intentionally separates it from a future stable `latest` release. No privileged native installer is needed.
 
 ## Develop and verify
 
@@ -119,11 +119,11 @@ The public npm package preview contains exactly ten files: `DISCLOSURE`, `LICENS
 
 **Verification as of 2026-10-21:** The 27-case preview test suite ran successfully in a six-job GitHub Actions matrix on Node 22/24 across Windows, Ubuntu and macOS. Platform-specific fixture skips remain documented coverage gaps, not passing security checks. The local Windows acceptance run also confirmed that a real junction is `BLOCKED` while a clean control remains `INCOMPLETE`. These are dated results for the tested revision; rerun CI after changing the release candidate.
 
-See [Contributing](CONTRIBUTING.md), [Security reporting](SECURITY.md), the [JSON interface reference](docs/JSON_API.md) and the [Release checklist](RELEASE_CHECKLIST.md). The preview package has a deliberately restricted ten-file npm allowlist. **npm registry publication is separate from the GitHub source release.** Until a verified npm package exists, use the GitHub source ZIP/CLI. After npm publication, install the prerelease explicitly with `npm install -g reparse-lens@preview` (not `@latest`).
+See [Contributing](CONTRIBUTING.md), [Security reporting](SECURITY.md), the [JSON interface reference](docs/JSON_API.md) and the [Release checklist](RELEASE_CHECKLIST.md). The published preview package has a deliberately restricted ten-file npm allowlist. GitHub provides the source release; npm provides the `preview` dist-tag. Install the prerelease explicitly with `npm install -g reparse-lens@preview` (not `@latest`).
 
 ## npm dual-use content and publishing
 
-The npm package declares `contentPolicy.class: dual-use` and includes a root [DISCLOSURE](DISCLOSURE) explaining its legitimate use, foreseeable misuse and known limits. This is a transparency declaration under the [npm Dual-Use Content Policy](https://docs.npmjs.com/policies/dual-use/), not a classification as malware or proof of security. **Direct publication requires interactive 2FA**. The repository's manual npm workflow checks package contents only and does not publish or handle tokens. Publishing to the `preview` dist-tag is a separate authenticated step; until a registry entry is independently verified, use the GitHub source archive.
+The npm package declares `contentPolicy.class: dual-use` and includes a root [DISCLOSURE](DISCLOSURE) explaining its legitimate use, foreseeable misuse and known limits. This is a transparency declaration under the [npm Dual-Use Content Policy](https://docs.npmjs.com/policies/dual-use/), not a classification as malware or proof of security. **Direct publication requires interactive 2FA**. The repository's manual npm workflow checks package contents only and does not publish or handle tokens. The `0.1.0-preview.2` registry entry was published separately with enforced interactive 2FA and is independently verifiable through the npm package page and registry.
 
 ## License, support and references
 
