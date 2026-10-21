@@ -6,6 +6,29 @@
 
 Git tracks or reports a different view from the underlying filesystem. An empty, ignored or untracked directory junction may not appear in `git status`, yet still redirect filesystem access. Reparse Lens checks filesystem metadata directly and reports recognized links, possible scope escapes and unresolved cases.
 
+## I installed it successfully. What should I scan first?
+
+Start with **one existing development project**, rather than your whole user profile. For example, in PowerShell:
+
+```powershell
+reparse-lens --version
+reparse-lens doctor --json
+reparse-lens scan "C:\\Projects\\my-app" --json
+```
+
+Replace the example path with your actual project directory. From inside that directory, `reparse-lens scan . --json` is equivalent. See the [README quick start](../README.md#quick-start-install-and-run). The CLI inspects metadata; it does not intentionally read source-file contents or modify the scanned tree.
+
+## Why do I see BLOCKED and scanComplete: false together?
+
+They describe **different facts**, not contradictory results:
+
+- `BLOCKED`: a recognizable link, junction or path escape was observed. On Windows, older compatibility directories in a user profile can cause this without indicating malware.
+- `scanComplete: false`: traversal stopped at an entry/depth budget. Inspect `scanLimit.kind`, `scanLimit.limit` and `scanLimit.nextPath`; the latter names the first **not inspected** entry, not necessarily a problem.
+- `entriesChecked` does not exceed the configured `maxEntries`. For example, 30,000 checked entries and a limit of 30,000 does not mean the remaining files were examined.
+- `SCAN_LIMIT_REACHED` is an explicit warning separate from any observed links. Raising a limit or narrowing the scan scope may help investigate, but neither approach makes the tool a security gate.
+
+An ordinary Windows profile scan may contain both normal junctions and large dependency trees. Do **not** delete junctions or make system changes merely because this report says `BLOCKED`.
+
 ## Why does a clean Windows scan return INCOMPLETE / exit 3?
 
 Node-based metadata checks cannot prove coverage of all native NTFS reparse tags. A clean Windows result therefore stays `INCOMPLETE`, while a recognized junction is `BLOCKED` / exit 2. This is deliberate, not an installation problem.
