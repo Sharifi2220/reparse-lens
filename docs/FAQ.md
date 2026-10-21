@@ -67,7 +67,7 @@ Include OS/filesystem, Node version, command, expected status/exit, observed sta
 
 ## What has been tested, and what remains unknown?
 
-On 2026-10-21, 25 tests ran on GitHub Actions Node 22/24 × Windows, Ubuntu and macOS with all six jobs successful: Windows 21 PASS/4 SKIP, Ubuntu 25/0, macOS 24/1 **per job**. A real Windows host also confirmed a recognized junction is blocked and not intentionally traversed; the release-candidate scanner, CLI and 25-case test sources were synchronized with the release branch.
+On 2026-10-21, 27 test cases ran successfully in GitHub Actions on Node 22/24 × Windows, Ubuntu and macOS with all six jobs successful; platform fixture SKIPs remain explicit coverage gaps. A real Windows host also confirmed a recognized junction is blocked and not intentionally traversed; the release-candidate scanner, CLI and test sources were synchronized with the release branch.
 
 Unknown: complete Windows-native reparse-tag coverage, atomic traversal/no-follow handle guarantees, unrestricted cloud/UNC cases, and an external independent security certification. These are disclosed scope limits, not claims of completed protection. See the [technical design](../README.md#technical-design), [Threat model](THREAT_MODEL.md) and [Release checklist](../RELEASE_CHECKLIST.md).
 

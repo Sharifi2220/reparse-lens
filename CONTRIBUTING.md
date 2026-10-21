@@ -31,6 +31,6 @@ Run optional manual `scan` commands only against a disposable synthetic workspac
 
 Start with a focused issue or patch describing the user-visible behaviour. Do not upload a private workspace or an unredacted `--json` report. Security issues belong in [SECURITY.md](SECURITY.md), **not** a public issue.
 
-The synchronized baseline has **25 tests**. On 2026-10-21 its cross-platform CI matrix passed with documented platform SKIPs; a passing matrix is not proof of complete native NTFS or TOCTOU coverage. See the [README](README.md) for architecture and the [Threat model](docs/THREAT_MODEL.md) for what this scanner cannot establish.
+The synchronized baseline has **27 tests**. On 2026-10-21 its six-job cross-platform CI matrix passed with documented platform SKIPs; a passing matrix is not proof of complete native NTFS or TOCTOU coverage. See the [README](README.md) for architecture and the [Threat model](docs/THREAT_MODEL.md) for what this scanner cannot establish.
 
 For public contributions, use GitHub issues or pull requests. Security issues follow [SECURITY.md](SECURITY.md) and should not be disclosed publicly.

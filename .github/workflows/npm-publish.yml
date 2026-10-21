@@ -46,7 +46,7 @@ jobs:
           if (pkg.name !== 'reparse-lens' || pkg.version !== '0.1.0-preview.2' || pkg.private !== false || pkg.publishConfig?.tag !== 'preview' || pkg.contentPolicy?.class !== 'dual-use') throw Error('Manifest does not meet the preview/dual-use policy contract');
           if (JSON.stringify(entry.files.map(f => f.path).sort()) !== JSON.stringify(expected)) throw Error('Unexpected npm package contents');
           if (!readFileSync('DISCLOSURE', 'utf8').includes('Dual-Use Disclosure')) throw Error('Root DISCLOSURE not found');
-          console.log('Nine intended npm files and dual-use metadata verified. No package has been published.');
+          console.log('Ten intended npm files and dual-use metadata verified. No package has been published.');
           JS
       - name: Instructions for direct interactive 2FA publishing
         run: |

@@ -50,7 +50,7 @@ jobs:
           if (pkg.version !== '0.1.0-preview.2' || pkg.name !== 'reparse-lens' || pkg.private !== false || pkg.publishConfig?.tag !== 'preview' || pkg.contentPolicy?.class !== 'dual-use') throw Error('Preview package metadata mismatch');
           if (JSON.stringify(files) !== JSON.stringify(allow)) throw Error('Unexpected package archive contents: ' + JSON.stringify(files));
           if (!readFileSync('DISCLOSURE', 'utf8').includes('Dual-Use Disclosure')) throw Error('Root DISCLOSURE is missing or invalid');
-          console.log('Verified exactly nine intended npm files and dual-use metadata.');
+          console.log('Verified exactly ten intended npm files and dual-use metadata.');
           JS
       - name: Check npm registry package name (informational)
         run: |
@@ -110,7 +110,7 @@ jobs:
           ```
 
           ### Validation and limitations
-          Release workflow checks source syntax, 25 synthetic tests and a ten-file package allowlist. Cross-platform CI runs on Node 22/24 under Windows, Ubuntu and macOS; fixture SKIPs are not PASS.
+          Release workflow checks source syntax, 27 synthetic tests and a ten-file package allowlist. Cross-platform CI runs on Node 22/24 under Windows, Ubuntu and macOS; fixture SKIPs are not PASS.
 
           **Experimental, advisory only**: clean Windows scans remain `INCOMPLETE` / exit 3 due to incomplete native NTFS reparse tag coverage; observed junctions are `BLOCKED` / exit 2. No TOCTOU protection, sandboxing, malware detection or security certification. See SECURITY.md and docs/THREAT_MODEL.md.
 

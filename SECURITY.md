@@ -18,7 +18,7 @@ Never wire `ADVISORY`, `BLOCKED` or `INCOMPLETE` directly to a coding agent's au
 
 ## Verified testing (2026-10-21)
 
-The synchronized 25-case preview source passed `npm run check` and `npm test` on Windows Node.js 24.15.0: **21 PASS, 0 FAIL, 4 SKIP**. A real NTFS junction was recognized as `BLOCKED` / exit 2, and a clean Windows tree stayed `INCOMPLETE` / exit 3. GitHub Actions run `39581094614` passed all six Node 22/24 jobs: Windows 21/4 SKIP, Ubuntu 25/0, macOS 24/1 per job. These results apply to the tested source revision; later documentation/code commits need their own CI check.
+On the tested preview revision, `npm run check` and `npm test` completed with 27 test cases and no failures on the local Windows Node.js 24.15.0 host; fixture skips remain coverage gaps. A real NTFS junction was recognized as `BLOCKED` / exit 2, and a clean Windows tree stayed `INCOMPLETE` / exit 3. GitHub Actions run `39624538818` passed all six Node 22/24 jobs across Windows, Ubuntu and macOS. These results apply to the tested source revision; later documentation/code commits need their own CI check.
 
 The four Windows SKIPs are intentionally uncreatable portability/symlink fixtures in that runner environment, **not** passing security checks. Unknown Windows-native reparse tags, TOCTOU, full remote-filesystem coverage and independent security validation remain unverified.
 
