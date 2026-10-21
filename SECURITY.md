@@ -1,83 +1,31 @@
 # Security policy — Reparse Lens
 
+## Scope and supported expectations
 
+Reparse Lens `0.1.0-dev` is an experimental **metadata-only advisory inspector**. It is **not** a sandbox, access-control boundary, malware detector, comprehensive NTFS reparse-tag auditor or guarantee that a directory is safe. **All reports set `authorization: false`**, even when the status is `ADVISORY`.
 
+The source `scan` and `doctor` commands do not intentionally execute Git or coding agents, read file bodies, change scanned files or send telemetry. The tests create temporary synthetic files. Filesystem/OS providers may perform their own I/O, including network access for mapped, UNC or cloud-backed paths; this program does not enforce a network isolation policy.
 
+## Trust and limitations
 
+- **Windows reparse tags:** Node's `lstatSync` / `realpathSync.native` can recognize ordinary links and junctions but do not provide a verified inventory of every NTFS reparse tag. Clean Windows scans remain `INCOMPLETE` / exit 3. Recognized links yield `BLOCKED` / exit 2.
+- **Time of check vs use:** Enumeration, `lstatSync` and realpath checks are not atomic. Another process can replace entries before or after checks (TOCTOU / CWE-367). Reparse Lens cannot prevent such swaps or authorize later operations.
+- **Hardlinks and Git metadata:** A multi-linked file is reported without reconstructing all aliases. A `.git` file is not parsed; root `.git` directory internals are omitted with a warning. Git configuration/hooks are not executed or vetted.
+- **Provider and platform differences:** Cloud placeholders, UNC/network mounts, mount points, filesystem case rules, permissions, inaccessible directories and unknown entry types can reduce coverage. `--portable` name checks are heuristics and may produce false positives.
+- **Output budgets:** `--max-findings` bounds displayed findings, not scan coverage. An observed blocking link remains `BLOCKED` even when report entries are omitted. Entry/depth limits and I/O failures produce incomplete results.
 
+Never wire `ADVISORY`, `BLOCKED` or `INCOMPLETE` directly to a coding agent's authorization decision. Never describe passing CI as a security certification.
 
+## Verified testing (2026-10-21)
 
+The synchronized 25-case preview source passed `npm run check` and `npm test` on Windows Node.js 24.15.0: **21 PASS, 0 FAIL, 4 SKIP**. A real NTFS junction was recognized as `BLOCKED` / exit 2, and a clean Windows tree stayed `INCOMPLETE` / exit 3. GitHub Actions run `39581094614` passed all six Node 22/24 jobs: Windows 21/4 SKIP, Ubuntu 25/0, macOS 24/1 per job. These results apply to the tested source revision; later documentation/code commits need their own CI check.
 
+The four Windows SKIPs are intentionally uncreatable portability/symlink fixtures in that runner environment, **not** passing security checks. Unknown Windows-native reparse tags, TOCTOU, full remote-filesystem coverage and independent security validation remain unverified.
 
+## Report a vulnerability privately
 
+Send a concise report to **[akkbkk10@gmail.com](mailto:akkbkk10@gmail.com)**. Include the version, OS/filesystem, Node.js version, command, expected/actual result, and a **synthetic** minimal reproduction. Omit real credentials, private paths, personal data and customer workspaces.
 
+Do **not** publish sensitive exploit details or live secrets in GitHub issues. If GitHub private vulnerability reporting is enabled, it may be used as another private route. This project does not promise a response SLA or bounty.
 
-
-
-
-Reparse Lens 0.1.0-dev is experimental. It is **not** a sandbox, authorization mechanism, malware scanner, complete NTFS reparse auditor, or guarantee of no network activity or writes by other processes. A clean ADVISORY result does not authorize any coding agent.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Known limitations: incomplete Windows-native reparse-tag classification, TOCTOU and concurrent file swaps, untrusted ancestors or mounts, hardlink aliases, cloud/network filesystems, provider-specific metadata, and root .git internal exclusions. The scanner may not reliably recognize every Windows redirection and must not be used as an execution boundary.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Do not disclose secrets, private directory names, reproduction payloads with real user data, or executable exploit chains in public issues. Send security reports privately to [akkbkk10@gmail.com](mailto:akkbkk10@gmail.com), including only a synthetic reproduction, version, OS and Node.js version. Do not send credentials or private workspace contents. If GitHub private vulnerability reporting is enabled later, it may be used as an alternative. For Git for Windows vulnerabilities follow https://github.com/git-for-windows/git/security/policy.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Testing: current synced suite has 19 synthetic tests (Linux Node.js 22.16: 19 PASS, 0 FAIL, 0 SKIP, npm run check EXIT 0); independent native Windows reparse/junction testing is still required. A nested .git pointer regression was added on 2026-10-21. Green CI alone does not certify security.
-
-
-
-
-
-
-
-
-## Additional v0.1.0-dev diagnostic features
-Optional --portable checks Windows filename hazards and case collisions; doctor reports platform/Node coverage. No IO security guarantee arises from these commands. Git linked-worktree .git files are NOT parsed, and remain INCOMPLETE. A successful Linux scan is not a sandbox authorization.
-
-
-## Finding output limits
-The optional --max-findings option limits emitted finding objects, but scanning and grouped summary counts continue until scan-entry/depth limits apply. A detected link remains BLOCKED even if its individual finding is not displayed. A nonzero summary.omittedFindings adds FINDINGS_TRUNCATED. This is a bounded reporting feature, not an authorization decision.
+For source-level boundaries, see [README](README.md) and [Threat model](docs/THREAT_MODEL.md). For Git for Windows issues, see the upstream [security policy](https://github.com/git-for-windows/git/security/policy).

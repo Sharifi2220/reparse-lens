@@ -9,7 +9,6 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { scanWorkspace } from '../src/scanner.mjs';
 
-
 const testParent = dirname(fileURLToPath(import.meta.url));
 function withFixture(work) {
   const base = mkdtempSync(join(testParent, '.reparse-lens-fixture-'));
@@ -19,7 +18,6 @@ function withFixture(work) {
   finally { rmSync(base, { recursive: true, force: true }); }
 }
 const cleanStatus = process.platform === 'win32' ? 'INCOMPLETE' : 'ADVISORY';
-
 
 test('clean tree is advisory, not authorization', () => withFixture(root => {
   mkdirSync(join(root, 'empty'));
@@ -31,7 +29,6 @@ test('clean tree is advisory, not authorization', () => withFixture(root => {
   assert.ok(r.entriesChecked >= 2);
 }));
 
-
 test('hidden ignored empty directory still consumes scan budget', () => withFixture(root => {
   mkdirSync(join(root, '.hidden'));
   mkdirSync(join(root, '.hidden', 'empty'));
@@ -40,7 +37,6 @@ test('hidden ignored empty directory still consumes scan budget', () => withFixt
   assert.ok(r.findings.some(f => f.code === 'SCAN_ENTRY_LIMIT'));
 }));
 
-
 test('depth ceiling never produces a clean result', () => withFixture(root => {
   mkdirSync(join(root, 'deep'));
   mkdirSync(join(root, 'deep', 'deeper'));
@@ -48,7 +44,6 @@ test('depth ceiling never produces a clean result', () => withFixture(root => {
   assert.equal(r.status, 'INCOMPLETE');
   assert.ok(r.findings.some(f => f.code === 'SCAN_DEPTH_LIMIT'));
 }));
-
 
 test('only root .git internals are excluded, with warning', () => withFixture(root => {
   mkdirSync(join(root, '.git'));
@@ -62,7 +57,6 @@ test('only root .git internals are excluded, with warning', () => withFixture(ro
   assert.ok(r.warnings.includes('ROOT_GIT_INTERNALS_NOT_SCANNED'));
 }));
 
-
 test('hardlink aliases are unresolved, never silently accepted', () => withFixture(root => {
   writeFileSync(join(root, 'a.txt'), 'data');
   linkSync(join(root, 'a.txt'), join(root, 'b.txt'));
@@ -71,13 +65,11 @@ test('hardlink aliases are unresolved, never silently accepted', () => withFixtu
   assert.ok(r.findings.some(f => f.code === 'MULTIPLE_HARDLINKS_UNRESOLVED'));
 }));
 
-
 test('invalid root and limits fail without unsafe PASS', () => withFixture(root => {
   assert.equal(scanWorkspace(join(root, 'missing')).status, 'INCOMPLETE');
   assert.throws(() => scanWorkspace(root, { maxEntries: 0 }), /INVALID_SCAN_LIMIT/);
   assert.throws(() => scanWorkspace(root, { maxDepth: 999 }), /INVALID_SCAN_LIMIT/);
 }));
-
 
 test('link or Windows junction is detected even if empty and untracked', t => withFixture((root, base) => {
   const outside = join(base, 'outside');
@@ -98,13 +90,11 @@ test('link or Windows junction is detected even if empty and untracked', t => wi
   assert.equal(r.authorization, false);
 }));
 
-
 test('file content is not needed to identify risky entries', () => withFixture(root => {
   writeFileSync(join(root, 'regular-file'), 'SYNTHETIC_SECRET_DO_NOT_OUTPUT');
   const text = JSON.stringify(scanWorkspace(root));
   assert.equal(text.includes('SYNTHETIC_SECRET_DO_NOT_OUTPUT'), false);
 }));
-
 
 test('portable scan reports Windows reserved and trailing-dot names on POSIX', t => withFixture(root => {
   if (process.platform === 'win32') { t.skip('Windows forbids the fixture'); return; }
@@ -115,7 +105,6 @@ test('portable scan reports Windows reserved and trailing-dot names on POSIX', t
   assert.equal(result.portabilityChecked, true);
   assert.equal(result.findings.filter(f => f.code === 'WINDOWS_NAME_NOT_PORTABLE').length, 2);
 }));
-
 
 test('portable mode flags cross-platform case collisions', t => withFixture(root => {
   if (process.platform === 'win32') { t.skip('Case-sensitive Windows fixture not available'); return; }
@@ -133,7 +122,6 @@ test('portable mode flags cross-platform case collisions', t => withFixture(root
   assert.equal(scanWorkspace(root).status, 'ADVISORY');
 }));
 
-
 test('linked worktree .git pointer is disclosed as uninspected', () => withFixture(root => {
   writeFileSync(join(root, '.git'), 'gitdir: ../external');
   const result = scanWorkspace(root);
@@ -141,11 +129,9 @@ test('linked worktree .git pointer is disclosed as uninspected', () => withFixtu
   assert.ok(result.findings.some(f => f.code === 'GITDIR_FILE_NOT_INSPECTED'));
 }));
 
-
 test('portable option must be strictly boolean', () => withFixture(root => {
   assert.throws(() => scanWorkspace(root, { portable: 'yes' }), /INVALID_PORTABLE_OPTION/);
 }));
-
 
 test('CLI doctor reports transparent platform limits without scanning', () => {
   const cli = join(testParent, '..', 'src', 'cli.mjs');
@@ -156,7 +142,6 @@ test('CLI doctor reports transparent platform limits without scanning', () => {
   assert.equal(doctor.nativeWindowsReparseTags, false);
   assert.equal(doctor.platform, process.platform);
 });
-
 
 test('CLI clean scan JSON and missing-root have distinct exit codes', () => withFixture(root => {
   const cli = join(testParent, '..', 'src', 'cli.mjs');
@@ -172,7 +157,6 @@ test('CLI clean scan JSON and missing-root have distinct exit codes', () => with
   assert.equal(invalid.status, 64);
 }));
 
-
 test('nested gitfile is reported as uninspected rather than silently accepted', () => withFixture(root => {
   mkdirSync(join(root, 'vendor'));
   writeFileSync(join(root, 'vendor', '.git'), 'gitdir: ../../outside');
@@ -180,7 +164,6 @@ test('nested gitfile is reported as uninspected rather than silently accepted', 
   assert.equal(report.status, 'INCOMPLETE');
   assert.ok(report.findings.some(f => f.code === 'GITDIR_FILE_NOT_INSPECTED' && f.path === 'vendor/.git'));
 }));
-
 
 test('bounded findings output preserves total counts and never reports advisory', () => withFixture(root => {
   for (const folder of ['alpha', 'beta', 'gamma']) {
@@ -196,7 +179,6 @@ test('bounded findings output preserves total counts and never reports advisory'
   assert.ok(r.warnings.includes('FINDINGS_TRUNCATED'));
   assert.equal(r.authorization, false);
 }));
-
 
 test('link after finding-output truncation is still BLOCKED', t => withFixture((root, base) => {
   for (const folder of ['alpha', 'beta']) {
@@ -220,12 +202,10 @@ test('link after finding-output truncation is still BLOCKED', t => withFixture((
   assert.equal(r.authorization, false);
 }));
 
-
 test('invalid maxFindings is rejected before scanning', () => withFixture(root => {
   assert.throws(() => scanWorkspace(root, { maxFindings: 0 }), /INVALID_SCAN_LIMIT/);
   assert.throws(() => scanWorkspace(root, { maxFindings: 100001 }), /INVALID_SCAN_LIMIT/);
 }));
-
 
 test('CLI output limit and grouped findings remain machine readable', () => withFixture(root => {
   const cli = join(testParent, '..', 'src', 'cli.mjs');
@@ -240,4 +220,87 @@ test('CLI output limit and grouped findings remain machine readable', () => with
   assert.equal(data.summary.totalFindings, 2);
   assert.equal(data.summary.omittedFindings, 1);
   assert.ok(data.warnings.includes('FINDINGS_TRUNCATED'));
+}));
+
+
+test('CLI double-dash allows option-looking directory names, even --help', () => withFixture((root, base) => {
+  const cli = join(testParent, '..', 'src', 'cli.mjs');
+  mkdirSync(join(base, '-repo'));
+  mkdirSync(join(base, '--help'));
+  for (const directory of ['-repo', '--help']) {
+    const res = spawnSync(process.execPath, [cli, 'scan', '--json', '--', directory],
+      { cwd: base, encoding: 'utf8' });
+    assert.equal(res.status, process.platform === 'win32' ? 3 : 0, res.stderr);
+    assert.equal(JSON.parse(res.stdout).authorization, false);
+  }
+  const bad = spawnSync(process.execPath, [cli, 'scan', '--', '-repo', '--json'],
+    { cwd: base, encoding: 'utf8' });
+  assert.equal(bad.status, 64, 'only one positional directory allowed');
+}));
+
+test('regular file selected as root yields ROOT_NOT_DIRECTORY', () => withFixture(root => {
+  const regularFile = join(root, 'file.txt');
+  writeFileSync(regularFile, 'fixture');
+  const r = scanWorkspace(regularFile);
+  assert.equal(r.status, 'INCOMPLETE');
+  assert.deepEqual(r.findings.map(f => f.code), ['ROOT_NOT_DIRECTORY']);
+}));
+
+test('selected link root is ROOT_IS_LINK rather than ancestor', t => withFixture((root, base) => {
+  const link = join(base, 'selected-link');
+  try {
+    symlinkSync(root, link, process.platform === 'win32' ? 'junction' : 'dir');
+  } catch (e) {
+    if (['EPERM', 'EACCES', 'ENOTSUP', 'EOPNOTSUPP'].includes(e?.code)) {
+      t.skip('symbolic link fixtures not supported'); return;
+    }
+    throw e;
+  }
+  const r = scanWorkspace(link);
+  assert.equal(r.status, 'BLOCKED');
+  assert.deepEqual(r.findings.map(f => f.code), ['ROOT_IS_LINK']);
+}));
+
+test('selected path with linked ancestor reports ROOT_ANCESTOR_LINK', t => withFixture((root, base) => {
+  const link = join(base, 'parent-link');
+  mkdirSync(join(root, 'child'));
+  try {
+    symlinkSync(root, link, process.platform === 'win32' ? 'junction' : 'dir');
+  } catch (e) {
+    if (['EPERM', 'EACCES', 'ENOTSUP', 'EOPNOTSUPP'].includes(e?.code)) {
+      t.skip('symbolic link fixtures not supported'); return;
+    }
+    throw e;
+  }
+  const r = scanWorkspace(join(link, 'child'));
+  assert.equal(r.status, 'BLOCKED');
+  assert.deepEqual(r.findings.map(f => f.code), ['ROOT_ANCESTOR_LINK']);
+}));
+
+test('Windows console device names receive portability diagnostics', t => withFixture(root => {
+  if (process.platform === 'win32') { t.skip('Windows disallows console device test fixture'); return; }
+  writeFileSync(join(root, 'CONIN$'), 'fixture');
+  writeFileSync(join(root, 'CONOUT$.txt'), 'fixture');
+  const r = scanWorkspace(root, { portable: true });
+  assert.equal(r.summary.portability, 2);
+  assert.equal(r.status, 'INCOMPLETE');
+}));
+
+test('reported filename truncation preserves Unicode codepoints and sanitizes C1 controls', t => withFixture(root => {
+  if (process.platform === 'win32') { t.skip('cross-platform long unicode fixture tested on POSIX'); return; }
+  const first = 'a'.repeat(240);
+  const second = 'b'.repeat(240);
+  mkdirSync(join(root, first));
+  mkdirSync(join(root, first, second));
+  const longName = 'c'.repeat(17) + '😀' + '.';
+  writeFileSync(join(root, first, second, longName), 'fixture');
+  writeFileSync(join(root, 'control\u009b.'), 'fixture');
+  const r = scanWorkspace(root, { portable: true });
+  const f = r.findings.find(x => x.path.includes('a'.repeat(20)));
+  assert.ok(f, JSON.stringify(r.findings));
+  assert.ok(f.path.includes('😀'), f.path);
+  assert.ok(f.path.endsWith('…'), f.path);
+  assert.ok(!/[\ud800-\udfff]/u.test(f.path.replaceAll('😀', '')));
+  assert.ok(r.findings.some(x => x.path.includes('control?')));
+  assert.ok(!JSON.stringify(r).includes('\u009b'));
 }));
