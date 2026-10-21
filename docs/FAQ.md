@@ -1,77 +1,73 @@
 # Reparse Lens — Developer FAQ
 
+**Current stage:** `0.1.0-dev`, experimental and advisory-only. A scan is a snapshot of selected metadata, **never** permission for an agent or script to operate on a workspace.
 
-**Status: 0.1.0-dev, experimental and advisory only.** Reparse Lens does not authorize a coding agent, grant filesystem permissions, sandbox a process, fix Git, or certify the safety of a workspace.
+## What problem does it solve?
 
+Git tracks or reports a different view from the underlying filesystem. An empty, ignored or untracked directory junction may not appear in `git status`, yet still redirect filesystem access. Reparse Lens checks filesystem metadata directly and reports recognized links, possible scope escapes and unresolved cases.
 
-## I see BLOCKED, but this link is legitimate. Is it an attack?
+## Why does a clean Windows scan return INCOMPLETE / exit 3?
 
+Node-based metadata checks cannot prove coverage of all native NTFS reparse tags. A clean Windows result therefore stays `INCOMPLETE`, while a recognized junction is `BLOCKED` / exit 2. This is deliberate, not an installation problem.
 
-Not necessarily. Reparse Lens currently reports detectable symlinks/junctions conservatively, including internal monorepo links such as `node_modules/my-workspace-package`. It does not follow the target while enumerating. Review the link and the consumer's trust policy separately. A future version may classify internal, external and unknown targets without automatically granting access.
+## Does BLOCKED mean a link is malicious?
 
+No. The scanner conservatively reports recognized links, including legitimate monorepo workspace links inside `node_modules`. It does not automatically allow internal links or follow their targets. Review the link separately and use your own trust policy; the scanner does not grant permission.
 
-## My Windows tree has no findings. Why INCOMPLETE / exit 3?
+## Why does a .git file generate a finding?
 
+Git linked worktrees and submodules may store a **file** named `.git` pointing to metadata elsewhere. Reparse Lens does not read that pointer's content, so `GITDIR_FILE_NOT_INSPECTED` is unresolved and leads to `INCOMPLETE`. A root `.git` directory is recognized and its internals excluded with a warning; nested `.git` directories remain in scan scope.
 
-Windows has many NTFS reparse tag types. This Node.js-only version cannot prove complete native tag inspection, so even a clean Windows scan remains INCOMPLETE. An observed junction still yields BLOCKED / exit 2. Do not treat INCOMPLETE as a tool crash or authorization.
+## Are Windows filename warnings security vulnerabilities?
 
+Not inherently. `--portable` flags names with possible Windows device-name/trailing-dot/conflicting-character problems and case collisions. These are **compatibility heuristics**, not proof of exploitation. Their presence currently produces `INCOMPLETE` under report schema v1; a future version may distinguish portability from scan coverage.
 
-## Why is my .git file reported?
-
-
-Git worktrees and submodules can contain a legitimate `.git` *file* redirecting to Git metadata elsewhere. Reparse Lens deliberately does not read or validate that pointer; it reports `GITDIR_FILE_NOT_INSPECTED` and INCOMPLETE. Root `.git` directory internals are excluded by default with a warning, and nested `.git` directories are traversed.
-
-
-## Are Windows filename reports security findings?
-
-
-No. `--portable` reports potential portability conflicts: reserved Windows names, trailing dots/spaces, forbidden characters and possible case-folding collisions. These signals are heuristic and can be false positives. In JSON v1 they still affect INCOMPLETE; a future version may separate portability and scan-coverage statuses.
-
-
-## Does the scanner read source code or connect to a server?
-
-
-The `scan` and `doctor` commands do not intentionally read file bodies, invoke Git or coding agents, execute subprocesses, send telemetry or perform network requests. The test suite writes and removes synthetic fixtures. Do not mistake this design goal for an OS-enforced guarantee against other processes or TOCTOU changes.
-
-
-## Can I scan a large repo without producing massive CI logs?
-
-
-Use:
-
+## How can I use the CLI in scripts?
 
 ```sh
-node src/cli.mjs scan . --json --max-entries 30000 --max-depth 64 --max-findings 100
+node src/cli.mjs scan . --json --max-findings 100
 ```
 
+Check the process exit code **and** the `status`, `warnings` and `authorization` fields. Interpret exit 0 only as completion of implemented checks, exit 2 as an observed link/escape, exit 3 as incomplete coverage, and exit 64 as invalid invocation or scan-level failure. Do not map any status to automatic execution authorization.
 
-The scanner keeps the scan-entry and depth budgets separate from the displayed-finding budget. The JSON `summary` reports totals across grouped categories, including `omittedFindings`. When the displayed list is truncated, `FINDINGS_TRUNCATED` is present. A recognized link remains BLOCKED even if its individual finding was omitted.
+## How can I scan a directory whose name starts with a hyphen?
 
+Put options before the `--` terminator:
 
-## How do exit codes work?
+```sh
+node src/cli.mjs scan --json -- -workspace
+```
 
+## What are the limits and memory implications?
 
-| Exit | Meaning |
-|---|---|
-| 0 | ADVISORY: implemented checks completed; NEVER security approval |
-| 2 | BLOCKED: detectable link or path escape |
-| 3 | INCOMPLETE: information or coverage gap, including an otherwise clean Windows scan |
-| 64 | Invalid invocation |
+The default budgets are 30,000 entries, depth 64 and 1,000 displayed findings. `--max-findings` limits output but does not stop scanning early. Even if a link finding is omitted from the normal finding list, a blocking link is retained in the result classification. Entry limits bound work, but the pending directory stack and per-directory case-folding map may still use memory; the scanner is **not** a constant-memory proof.
 
+## Does it read source code or access the network?
 
-## How do I install without npm or admin access?
+The `scan` and `doctor` commands do not intentionally read file bodies, run Git, invoke agents, send telemetry or connect to a service. `npm test` creates/deletes temporary synthetic fixtures. The operating system or a cloud/UNC/mapped filesystem provider may nevertheless generate network or disk activity when resolving metadata. This tool is **not** a network or filesystem sandbox.
 
+## Is a successful scan safe against concurrent changes?
 
-Download a release/source ZIP once available, extract it, install an existing Node.js 22+ runtime if needed, and run `node src/cli.mjs --help` and `node src/cli.mjs scan <folder>`. No `npm install` is necessary to use the current source CLI.
+No. `lstat`, `realpath` and directory enumeration occur at different times. Another process could replace an entry between checks (TOCTOU). Never use the result to authorize subsequent file operations.
 
+## Can I use it without npm, admin rights or an installation?
 
-## How do I send a useful bug report?
+Yes, with an existing Node.js 22+ runtime. Download a source ZIP, extract it, and run:
 
+```sh
+node src/cli.mjs --help
+node src/cli.mjs scan .
+```
 
-Use a fresh synthetic directory tree, state the OS and filesystem type, Node.js version, `doctor --json` result, command, observed exit code and expected result. Strip personal directory names, secrets and workspace contents. For potentially exploitable vulnerabilities, follow SECURITY.md and private reporting rather than posting sensitive exploit steps publicly.
+The package manifest sets `private: true`; no npm package has been published.
 
+## How do I report a bug safely?
 
-## What is still missing before stable release?
+Include OS/filesystem, Node version, command, expected status/exit, observed status/exit, and a reproducible **synthetic** tree. Remove usernames, real workspace names, tokens and private data. Use the private contact in [SECURITY.md](../SECURITY.md) for vulnerabilities.
 
+## What has been tested, and what remains unknown?
 
-Native Windows reparse-tag testing, actual Windows/macOS GitHub CI evidence, ZIP usability checks, independent security review, and real user feedback. No public GitHub/npm release has yet been verified by this documentation.
+On 2026-10-21, 25 tests ran on GitHub Actions Node 22/24 × Windows, Ubuntu and macOS with all six jobs successful: Windows 21 PASS/4 SKIP, Ubuntu 25/0, macOS 24/1 **per job**. A real Windows host also confirmed a recognized junction is blocked and not intentionally traversed; the release-candidate scanner, CLI and 25-case test sources were synchronized with the release branch.
+
+Unknown: complete Windows-native reparse-tag coverage, atomic traversal/no-follow handle guarantees, unrestricted cloud/UNC cases, and an external independent security certification. These are disclosed scope limits, not claims of completed protection. See the [technical design](../README.md#technical-design), [Threat model](THREAT_MODEL.md) and [Release checklist](../RELEASE_CHECKLIST.md).
+

@@ -1,191 +1,124 @@
 # Reparse Lens
 
+**See filesystem entries that Git status may miss.** Reparse Lens is a dependency-free Node.js command-line inspector for workspace links and metadata anomalies. It can detect ordinary symlinks and Windows junctions even when they are empty, ignored or untracked by Git. It also reports unresolved Git metadata pointers, hardlink ambiguity and optional Windows filename compatibility issues.
 
+**Release stage:** `0.1.0-dev` — experimental, **advisory only**. Reparse Lens is **not** a sandbox, access-control mechanism, antivirus product, complete NTFS reparse-point scanner or permission decision. Every scan result sets `authorization: false`.
 
+## Start in five minutes
 
-**See the filesystem paths that Git status does not show.** Reparse Lens is an offline, zero-dependency command-line inspector for Windows junctions, POSIX symlinks, hardlink ambiguity, linked Git worktree metadata, and portable filenames. Designed for developers, CI maintainers, and people using coding agents.
+Requires **Node.js 22 or newer**. Download and extract the source ZIP or clone the GitHub repository. From the extracted project directory, run the CLI directly. No `npm install`, administrator rights or external service is required for ordinary local scans.
 
-
-
-
-**Version: 0.1.0-dev — experimental, advisory only.** Not an agent sandbox, access-control layer, antivirus product, or guarantee that a workspace is safe. A clean scan never authorizes an agent to read, write, or execute.
-
-
-
-
-## Five-minute quick start
-
-
-
-
-Requires **Node.js 22+**. Download the repository ZIP and extract it, or clone the repo after publication. No dependencies, account, admin rights, `npm install`, or network connection are needed to run the source CLI.
-
-
-
-
-**Windows PowerShell** (from the extracted `reparse-lens` folder):
-
-
-
+**Windows PowerShell:**
 
 ```powershell
-node .\src\cli.mjs doctor
+node .\src\cli.mjs --help
+node .\src\cli.mjs doctor --json
 node .\src\cli.mjs scan "C:\Projects\MyRepository"
 node .\src\cli.mjs scan "C:\Projects\MyRepository" --json
 ```
 
-
-
-
 **macOS / Linux:**
-
-
-
 
 ```sh
 node ./src/cli.mjs doctor
 node ./src/cli.mjs scan "$HOME/projects/my-repository"
-```
-
-
-
-
-**Portability audit**: report names that might conflict with normal Windows file handling (reserved names, trailing period/space, characters, possible case collisions). These are compatibility **warnings**, not proven attacks.
-
-
-
-
-```sh
-node ./src/cli.mjs scan . --portable
 node ./src/cli.mjs scan . --portable --json
 ```
 
+The tool is intentionally conservative. A clean Windows workspace normally yields **`INCOMPLETE` / exit 3**, not exit 0, because native inspection of every Windows reparse tag is not implemented. A detected junction is **`BLOCKED` / exit 2**. Neither status changes user or agent permissions.
 
+## CLI reference
 
+| Invocation | Behaviour |
+| --- | --- |
+| `scan [directory]` | Metadata scan of the selected root; defaults to the current directory |
+| `scan [directory] --json` | Machine-readable JSON report (`schemaVersion: 1`) |
+| `scan [directory] --portable` | Also flag potential Windows filename collisions and reserved names |
+| `scan [directory] --max-entries N` | Set maximum inspected entries (default 30,000; maximum 1,000,000) |
+| `scan [directory] --max-depth N` | Set maximum directory depth (default 64; maximum 256) |
+| `scan [directory] --max-findings N` | Set displayed finding limit (default 1,000; maximum 100,000) |
+| `scan [options] -- <directory>` | End option parsing so a directory can start with `-` |
+| `doctor [--json]` | Show runtime/platform capability information |
+| `--help`, `--version` | Show usage and version |
 
-## Commands
+For a directory literally named `-workspace`, use `node src/cli.mjs scan --json -- -workspace`. Place all options before `--`; exactly one directory argument is accepted after it.
 
+### Exit codes
 
+| Exit | Status | Meaning |
+| ---: | --- | --- |
+| `0` | `ADVISORY` | Implemented metadata checks completed; **not** proof of safety |
+| `2` | `BLOCKED` | Recognized link or path escape detected |
+| `3` | `INCOMPLETE` | Unresolved finding, I/O/budget issue or known coverage limitation |
+| `64` | — | Invalid CLI arguments, or an unexpected scan-level failure |
 
+Avoid treating any exit code as permission to let an automation read, execute, modify or delete files. Treat statuses as review signals.
 
-| Command | Purpose |
-|---|---|
-| `scan [directory]` | Inspect a directory (defaults to current directory) including ignored/empty entries |
-| `scan [directory] --json` | Emit machine-readable output for scripts |
-| `scan [directory] --portable` | Add cross-platform Windows filename checks |
-| `scan [directory] --max-entries N --max-depth N` | Change bounded scan limits |
-| `scan [directory] --max-findings N` | Limit displayed findings without hiding overall counts or link-based BLOCKED results |
-| `doctor [--json]` | Display runtime/feature diagnostics; does not modify files |
-| `--help`, `--version` | Show built-in help and version |
+## Reading the report
 
+The JSON report contains `schemaVersion`, `status`, `authorization`, `platform`, `entriesChecked`, `excludedGitInternals`, `limits`, `portabilityChecked`, `summary`, `findings` and `warnings`.
 
+Each finding has a diagnostic `code` and a bounded displayed `path`; some include `detail` for a sanitized I/O error. The `summary` counts `linksAndEscapes`, `portability`, `gitMetadata` and `other` findings, plus `totalFindings`, `shownFindings` and `omittedFindings`.
 
+Notable codes include:
 
-The CLI name reserved in `package.json` is `reparse-lens` for a future distribution. **No npm package is published**; use `node src/cli.mjs` until a public package is independently checked and released.
+- `LINK_FOUND`, `ROOT_IS_LINK`, `ROOT_ANCESTOR_LINK`, `DIRECTORY_ESCAPE`, `FILE_ESCAPE` — recognized links or path escapes.
+- `GITDIR_FILE_NOT_INSPECTED` — a `.git` file may be a legitimate Git worktree/submodule pointer; its contents were intentionally not read.
+- `MULTIPLE_HARDLINKS_UNRESOLVED`, `ROOT_NOT_DIRECTORY`, `SCAN_ENTRY_LIMIT`, `SCAN_DEPTH_LIMIT` — unresolved coverage or scan limits.
+- `WINDOWS_NAME_NOT_PORTABLE`, `WINDOWS_NAME_COLLISION_POSSIBLE` — optional compatibility heuristics, **not** confirmed security issues.
 
-
-
-
-## Interpreting results
-
-
-
-
-| Status | Exit | Interpretation |
-|---|---:|---|
-| `ADVISORY` | 0 | Implemented metadata checks completed, **not a safety approval** |
-| `BLOCKED` | 2 | A detectable link or workspace path escape was found |
-| `INCOMPLETE` | 3 | A budget, I/O, portability or hardlink ambiguity, or unsupported check prevents coverage |
-| Invalid command | 64 | Fix command syntax with `--help` |
-
-
-
-
-**Windows always returns `INCOMPLETE` for an otherwise clean scan in 0.1.0-dev**, because comprehensive detection of NTFS reparse tags is not implemented. An observed Windows junction can still produce `BLOCKED`. This difference is intentional: a test of one junction type cannot prove detection of every reparse type.
-
-
-
-
-Findings include links (`LINK_FOUND`), escaped canonical paths, unreadable entries, exceeded limits, `MULTIPLE_HARDLINKS_UNRESOLVED`, `GITDIR_FILE_NOT_INSPECTED`, and optional `WINDOWS_NAME_NOT_PORTABLE` / `WINDOWS_NAME_COLLISION_POSSIBLE`. A `.git` *file* can be the normal pointer of a linked Git worktree; its contents are not read, so Reparse Lens reports that it has not validated this pointer. The scanner does not assume such a file is malicious.
-
-
-
-
-Root `.git` directory contents are intentionally excluded and reported. Nested `.git` directories are included in the scan. Defaults: 30,000 entries, 64 directory levels, and 1,000 displayed findings. Errors and limits never turn into a clean result.
-
-
-
-
-### Handling large outputs in CI
-
-
-
+To bound CI report size:
 
 ```sh
 node ./src/cli.mjs scan . --portable --max-findings 100 --json
 ```
 
+The scanner still counts findings discovered within the scan-entry/depth budgets. `FINDINGS_TRUNCATED` indicates some details were omitted, and a detected blocking link still makes the result `BLOCKED`. A display limit is not a traversal limit.
 
+## Technical design
 
+```text
+CLI arguments (src/cli.mjs)
+          |
+          v
+scanWorkspace(root, options) (src/scanner.mjs)
+          |
+          +-- validate limits and root / parent metadata
+          +-- lstatSync + realpathSync.native snapshot
+          +-- incremental opendirSync/readSync enumeration
+          +-- inspect directory entries; do not follow recognized links
+          +-- count findings and enforce entry/depth/output limits
+          |
+          v
+advisory JSON/human report + exit code (authorization:false)
+```
 
-`summary` reports counts grouped by `linksAndEscapes`, `portability`, `gitMetadata`, and `other`. It also reports `totalFindings`, `shownFindings`, and `omittedFindings`. When some findings cannot be displayed, `FINDINGS_TRUNCATED` is included in `warnings`, but totals and a detected link-based `BLOCKED` result remain intact. The JSON `schemaVersion: 1` and existing `status`/exit codes remain unchanged. This is an output-size control, not proof of a complete security audit. A normal in-project symlink is currently reported as `BLOCKED`; no automatic safe-link policy is implemented.
+The scanner uses an explicit pending-directory stack rather than recursively invoking itself. It checks the selected root and each parent separately to distinguish root links from linked ancestors. For each enumerated entry it calls `lstatSync`, checks known links, resolves paths using `realpathSync.native`, and queues only directories considered in scope at the time of checking. File **contents are not parsed**.
 
+A root `.git` directory is detected, then its internals are excluded with a warning. Nested `.git` directories are scanned. Git worktree `.git` files are reported as unresolved, without reading their content. `--portable` performs heuristic reserved-name and case-collision checks on each enumerated directory.
 
+**Important boundary:** A sequence of metadata checks is not atomic. Files may be swapped between checks (TOCTOU); unfamiliar Windows reparse tags, cloud placeholders, network/UNC mounts and hardlink targets are not exhaustively classified. A directory pending stack can also grow with discovered subdirectories, so the entry limit bounds enumeration work but is not a constant-memory guarantee. See [Threat model](docs/THREAT_MODEL.md) for failure modes and the [Developer FAQ](docs/FAQ.md) for practical interpretation.
 
+The `scan` and `doctor` commands do not intentionally read file bodies, launch Git/agents, send telemetry or write to the scanned tree. The test suite **does** create and remove disposable fixtures. Scanning a remote, cloud-backed or mapped filesystem may nevertheless cause operating-system/provider I/O outside the CLI's control.
 
-## Privacy and limitations
-
-
-
-
-The `scan` and `doctor` commands use local metadata and do not intentionally read file bodies, modify the scanned directory, run Git or AI agents, or connect to the internet. The **test suite** writes and removes its own synthetic fixtures under `test/`.
-
-
-
-
-Snapshot scanning cannot prevent TOCTOU swaps or writes by another process. Windows reparse tags, volume mount points, cloud placeholders, UNC/network mounts, hardlink targets and Git configuration/hook execution are not exhaustively covered. A path may change after scanning. This product must never be described or used as a permission boundary. See [SECURITY.md](SECURITY.md), [Threat model](docs/THREAT_MODEL.md) and [Developer FAQ](docs/FAQ.md).
-
-
-
-
-## Developers
-
-
-
+## Develop and verify
 
 ```sh
-npm test
 npm run check
+npm test
 npm pack --dry-run --json --ignore-scripts
 ```
 
+The public package preview includes only eight files: `LICENSE`, `README.md`, `SECURITY.md`, `docs/FAQ.md`, `docs/THREAT_MODEL.md`, `package.json`, `src/cli.mjs` and `src/scanner.mjs`. This list is separate from the larger public GitHub source repository (which also contains tests, CI and contribution materials). Internal validation notes and local development instructions are excluded.
 
+**Verification as of 2026-10-21:** The 25-case preview test suite ran in a six-job GitHub Actions matrix (Node 22/24 on Windows, Ubuntu and macOS), all jobs successful: per job Windows 21 PASS / 4 SKIP, Ubuntu 25 PASS / 0 SKIP, macOS 24 PASS / 1 SKIP. Windows Node 24 host acceptance also reported 21 PASS / 4 SKIP and a real junction detected as `BLOCKED`; a clean Windows control remained `INCOMPLETE`. Skips are coverage gaps, not passing tests. These are dated evidence for the tested revision; rerun CI after changing the release candidate.
 
+See [Contributing](CONTRIBUTING.md), [Security reporting](SECURITY.md) and the [Release checklist](RELEASE_CHECKLIST.md). The package manifest intentionally has `"private": true`: **there is no npm publication**; use the source CLI.
 
-A GitHub Actions matrix is prepared for Node 22/24 on Windows, macOS and Linux. Its results are not yet an independent Windows security certification. Windows-only fixtures that cannot be created must be reported as `SKIP`/`UNKNOWN`, not passed.
+## License, support and references
 
+Licensed under [Mozilla Public License 2.0](LICENSE), which permits commercial use subject to its terms. This project does not promise a commercial service, security certification or support SLA.
 
+General questions and confidential vulnerability reports: [akkbkk10@gmail.com](mailto:akkbkk10@gmail.com). Do not send real credentials, personal filesystem inventories or private workspace content.
 
-
-## License and sustainability
-
-
-## Contact
-
-
-For general project questions, bug reports and security reports, contact [akkbkk10@gmail.com](mailto:akkbkk10@gmail.com). Please send sensitive security details privately and do not include credentials, private paths or user data.
-
-
-
-
-[MPL-2.0](LICENSE). Commercial use is permitted under the license terms. Sponsorship or support may be offered later; payments are not required and no passive revenue is guaranteed. The planned public product/repository name is **Reparse Lens** (`reparse-lens`), pending final npm/brand checks.
-
-
-
-
-## Primary references
-
-
-
-
-[Git status](https://git-scm.com/docs/git-status) · [Git worktrees](https://git-scm.com/docs/git-worktree) · [Node.js filesystem](https://nodejs.org/api/fs.html) · [Windows file names](https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file) · [Windows reparse points](https://learn.microsoft.com/en-us/windows/win32/fileio/reparse-point-tags)
+Primary documentation: [Node.js filesystem API](https://nodejs.org/api/fs.html) · [Git status](https://git-scm.com/docs/git-status) · [Git worktrees](https://git-scm.com/docs/git-worktree) · [Microsoft Windows reparse tags](https://learn.microsoft.com/en-us/windows/win32/fileio/reparse-point-tags) · [Windows filename rules](https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file).

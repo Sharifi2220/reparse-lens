@@ -3,7 +3,6 @@
 import { lstatSync, opendirSync, realpathSync } from 'node:fs';
 import { resolve, relative, isAbsolute, parse, sep } from 'node:path';
 
-
 const DEFAULTS = Object.freeze({ maxEntries: 30000, maxDepth: 64, maxFindings: 1000 });
 const BLOCKING_CODES = new Set([
   'ROOT_IS_LINK', 'ROOT_ANCESTOR_LINK', 'LINK_FOUND', 'DIRECTORY_ESCAPE',
@@ -16,7 +15,7 @@ function findingCategory(code) {
   if (code === 'GITDIR_FILE_NOT_INSPECTED') return 'gitMetadata';
   return 'other';
 }
-const WINDOWS_RESERVED = /^(CON|PRN|AUX|NUL|COM[1-9¹²³]|LPT[1-9¹²³])(?:\.|$)/i;
+const WINDOWS_RESERVED = /^(CON|PRN|AUX|NUL|COM[1-9¹²³]|LPT[1-9¹²³]|CONIN\$|CONOUT\$)(?:\.|$)/i;
 /** Portability diagnostics are compatibility hints, NOT claims of a security exploit. */
 function windowsNameIssues(name) {
   const issues = [];
@@ -25,13 +24,20 @@ function windowsNameIssues(name) {
   return issues;
 }
 
-
 function inside(root, target) {
   const r = relative(root, target);
   return r === '' || (r !== '..' && !r.startsWith('..' + sep) && !isAbsolute(r));
 }
 function label(parts) {
-  return parts.join('/').replace(/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/g, '?').slice(0, 500);
+  const cleaned = parts.join('/').replace(/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g, '?');
+  let out = '';
+  let count = 0;
+  for (const codePoint of cleaned) {
+    if (count === 500) return out + '…';
+    out += codePoint;
+    count += 1;
+  }
+  return out;
 }
 function errorCode(error) {
   const code = error && typeof error.code === 'string' ? error.code : 'UNKNOWN';
@@ -42,7 +48,6 @@ function validLimit(value, fallback, maximum) {
   if (!Number.isSafeInteger(n) || n < 1 || n > maximum) throw new TypeError('INVALID_SCAN_LIMIT');
   return n;
 }
-
 
 /**
  * Scan a selected folder without reading file contents, executing programs,
@@ -87,7 +92,9 @@ export function scanWorkspace(selectedRoot, options = {}) {
     const volume = parse(requested).root;
     let ancestor = volume;
     const parts = relative(volume, requested).split(sep).filter(Boolean);
-    for (const part of parts) {
+    // Parents only: the selected root must be classified separately.
+    // The path checks are non-atomic; they do not prevent TOCTOU races.
+    for (const part of parts.slice(0, -1)) {
       ancestor = resolve(ancestor, part);
       if (lstatSync(ancestor).isSymbolicLink()) {
         recordFinding({ code: 'ROOT_ANCESTOR_LINK', path: '.' });
@@ -99,13 +106,15 @@ export function scanWorkspace(selectedRoot, options = {}) {
       recordFinding({ code: 'ROOT_IS_LINK', path: '.' });
       return report();
     }
-    if (!rootEntry.isDirectory()) throw new TypeError('ROOT_NOT_DIRECTORY');
-    canonicalRoot = realpathSync.native(resolve(selectedRoot));
+    if (!rootEntry.isDirectory()) {
+      recordFinding({ code: 'ROOT_NOT_DIRECTORY', path: '.' });
+      return report();
+    }
+    canonicalRoot = realpathSync.native(requested);
   } catch (e) {
     recordFinding({ code: 'ROOT_UNAVAILABLE', path: '.', detail: errorCode(e) });
     return report();
   }
-
 
   const pending = [{ absolute: canonicalRoot, parts: [], depth: 0 }];
   while (pending.length) {
@@ -193,7 +202,6 @@ export function scanWorkspace(selectedRoot, options = {}) {
     }
   }
   return report();
-
 
   function report() {
     const hasBlocked = blockedObserved;

@@ -1,78 +1,36 @@
-# Contributing — Reparse Lens
+# Contributing to Reparse Lens
 
+Reparse Lens is a small dependency-free, advisory filesystem metadata scanner. Contributions should improve reproducibility, documentation, Windows/macOS/Linux portability and honest reporting of uncertainty — not turn it into an unreviewed execution permission system.
 
+## Setup
 
+Use **Node.js 22 or 24** and a clean checkout or source ZIP. No `npm install` is required.
 
+```sh
+node src/cli.mjs --help
+node src/cli.mjs doctor --json
+npm run check
+npm test
+npm pack --dry-run --json --ignore-scripts
+```
 
+Run optional manual `scan` commands only against a disposable synthetic workspace, never against a contributor's real secrets without their permission. Tests must create and clean up synthetic fixtures; teardown must not follow junction or symlink targets.
 
+## Change contract
 
+1. State the observed platform/Node version, expected result and failure. Add a minimal regression test when possible.
+2. Preserve the **metadata-only, no intentional Git/subprocess/network/file-body-read** behaviour of `scan` and `doctor`.
+3. Maintain `schemaVersion: 1`, `authorization: false`, and the documented exit-code semantics unless a deliberately versioned migration is approved.
+4. Use `INCOMPLETE` for I/O failures, unresolved entry types and budget exhaustion; do not replace incomplete coverage with a false `ADVISORY`.
+5. Retain bounded `--max-entries`, `--max-depth` and `--max-findings` behaviour. An observed blocked link must remain blocked after reporting truncation.
+6. Cross-platform fixtures should **SKIP explicitly** when the filesystem cannot create them. Clearly report PASS/FAIL/SKIP; never convert a SKIP into a security PASS.
+7. Describe any external dependencies, native Windows code or changes to scanning trust boundaries before implementation. Avoid new runtime dependencies.
+8. Keep public contributions free of personal file paths, secrets, private project names, unrelated proprietary code and full private scans. Respect the [MPL-2.0](LICENSE), including existing notices.
 
-The project is a small advisory scanner, not a sandbox. We welcome reproducible, non-sensitive bug reports and small contributions after the public repository is opened. Follow the security disclosure instructions in SECURITY.md for vulnerabilities.
+## Where to contribute
 
+Start with a focused issue or patch describing the user-visible behaviour. Do not upload a private workspace or an unredacted `--json` report. Security issues belong in [SECURITY.md](SECURITY.md), **not** a public issue.
 
-General project questions and contribution coordination: [akkbkk10@gmail.com](mailto:akkbkk10@gmail.com). Use the private security-reporting route in SECURITY.md for vulnerabilities.
+The synchronized baseline has **25 tests**. On 2026-10-21 its cross-platform CI matrix passed with documented platform SKIPs; a passing matrix is not proof of complete native NTFS or TOCTOU coverage. See the [README](README.md) for architecture and the [Threat model](docs/THREAT_MODEL.md) for what this scanner cannot establish.
 
-
-
-
-
-
-
-
-## Development
-
-
-
-
-
-
-
-
-Use an official Node.js 22 or 24 runtime. No runtime dependencies or package installation are needed. Run `npm test` and `npm run check`. Keep all tests synthetic: create fixtures only in the project's dedicated temporary test folders and check that teardown never traverses symlink targets.
-
-
-
-
-
-
-
-
-## Patch guidelines
-
-
-
-
-
-
-
-
-- Keep scanning metadata-only and offline; no Git execution, agent invocation, file-body reads, networking or silent configuration changes.
-- Reject or mark INCOMPLETE for unreadable entries, unknown native reparse behavior, hardlinks and exhausted scan budgets.
-- Do not claim an OS sandbox or full TOCTOU protection; Windows-native proof must be separate.
-- Include a failing regression fixture and exact expected exit code. If the test needs privileges, document its SKIP/UNKNOWN state; do not silently claim PASS.
-- Avoid new dependencies unless the problem and supply-chain impact are evaluated.
-- Source under MPL-2.0. Preserve authorship notices and license text. Never contribute code copied from unrelated private projects.
-
-
-
-
-
-
-
-
-## Security / review
-
-
-
-
-
-
-
-
-Do not open public issues exposing user data, credentials, private paths or exploit details. Independent review and Windows acceptance are required before calling a version stable.
-
-
-
-
-## Updated local checks
-Run `node src/cli.mjs doctor --json`, `node src/cli.mjs scan . --portable --json`, `npm test`, and `npm run check`. On Linux the synchronized 19-case suite passed; Windows-specific SKIP/UNKNOWN outcomes must be reported explicitly and never called full security approval. Avoid exposing internal project paths or private directories in bug reports.
+General contribution contact: [akkbkk10@gmail.com](mailto:akkbkk10@gmail.com).

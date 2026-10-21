@@ -3,13 +3,13 @@
 // Advisory workspace scanner. This is not an authorization boundary.
 import { scanWorkspace } from './scanner.mjs';
 
-
 const VERSION = '0.1.0-dev';
 const HELP = [
   'Reparse Lens ' + VERSION,
   '',
   'Usage:',
   '  reparse-lens scan [directory] [--json] [--portable] [--max-entries N] [--max-depth N] [--max-findings N]',
+  '  reparse-lens scan -- <directory-starting-with-a-hyphen>',
   '  reparse-lens --help',
   '  reparse-lens --version',
   '  reparse-lens doctor [--json]',
@@ -17,6 +17,7 @@ const HELP = [
   'Examples:',
   '  node src/cli.mjs scan .',
   '  node src/cli.mjs scan "C:\\Projects\\my-app" --json',
+  '  node src/cli.mjs scan -- -my-project',
   '',
   'Exit codes:',
   '  0  ADVISORY: checks completed, NOT a security approval',
@@ -31,7 +32,6 @@ const HELP = [
   ''
 ].join('\n');
 
-
 function parseArgs(argv) {
   if (argv.length === 0 || (argv.length === 1 && ['--help','-h','help'].includes(argv[0])))
     return { action: 'help' };
@@ -42,25 +42,30 @@ function parseArgs(argv) {
     return { action: 'doctor', json: argv[1] === '--json' };
   }
   if (argv[0] !== 'scan') throw new TypeError('Unknown command. Run reparse-lens --help.');
-  if (argv.includes('--help') || argv.includes('-h')) return { action: 'help' };
   let directory;
   let json = false;
   const options = {};
+  let optionsEnded = false;
   for (let i = 1; i < argv.length; i++) {
     const arg = argv[i];
-    if (arg === '--portable') {
+    if (!optionsEnded && arg === '--') {
+      optionsEnded = true;
+      continue;
+    }
+    if (!optionsEnded && (arg === '--help' || arg === '-h')) return { action: 'help' };
+    if (!optionsEnded && arg === '--portable') {
       if (options.portable) throw new TypeError('--portable specified twice');
       options.portable = true;
-    } else if (arg === '--json') {
+    } else if (!optionsEnded && arg === '--json') {
       if (json) throw new TypeError('--json specified twice');
       json = true;
-    } else if (arg === '--max-entries' || arg === '--max-depth' || arg === '--max-findings') {
+    } else if (!optionsEnded && (arg === '--max-entries' || arg === '--max-depth' || arg === '--max-findings')) {
       const raw = argv[++i];
       if (!raw || !/^[1-9]\d*$/.test(raw)) throw new TypeError('Positive integer required for ' + arg);
       const key = arg === '--max-entries' ? 'maxEntries' : arg === '--max-depth' ? 'maxDepth' : 'maxFindings';
       if (options[key] !== undefined) throw new TypeError(arg + ' specified twice');
       options[key] = Number(raw);
-    } else if (arg.startsWith('-')) {
+    } else if (!optionsEnded && arg.startsWith('-')) {
       throw new TypeError('Unknown option: ' + arg);
     } else if (directory !== undefined) {
       throw new TypeError('Only one directory can be scanned');
@@ -70,7 +75,6 @@ function parseArgs(argv) {
   }
   return { action: 'scan', directory: directory || '.', options, json };
 }
-
 
 function humanReport(report) {
   const lines = [
@@ -89,11 +93,13 @@ function humanReport(report) {
     lines.push('Action: inspect the listed paths. A link or path escape was detected.');
   if (report.status === 'INCOMPLETE')
     lines.push('Action: review warnings and failures; the scan cannot establish full coverage.');
+  if (report.status === 'INCOMPLETE' && report.platform === 'win32' &&
+      report.warnings.includes('WINDOWS_REPARSE_TAG_COVERAGE_UNVERIFIED'))
+    lines.push('Windows note: INCOMPLETE is expected even for a clean tree until native reparse-tag coverage is verified.');
   if (report.warnings.length) lines.push('Limitations: ' + report.warnings.join(', '));
   lines.push('Not an access-control decision. Does not authorize any agent to read, write, or execute.');
   return lines.join('\n') + '\n';
 }
-
 
 try {
   const args = parseArgs(process.argv.slice(2));
