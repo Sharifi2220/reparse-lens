@@ -4,28 +4,59 @@
 
 **Release stage:** `0.1.0-preview.2` — experimental, **advisory only**. Reparse Lens is **not** a sandbox, access-control mechanism, antivirus product, complete NTFS reparse-point scanner or permission decision. Every scan result sets `authorization: false`.
 
-## Start in five minutes
+## Why this project exists
 
-Requires **Node.js 22 or newer**. Download and extract the source ZIP or clone the GitHub repository. From the extracted project directory, run the CLI directly. No `npm install`, administrator rights or external service is required for ordinary local scans.
+A Git working tree and the actual filesystem are not the same inventory. Git can ignore or omit empty, untracked and ignored entries, while a Windows junction or symbolic link can still redirect a filesystem operation. Reparse Lens gives developers a **read-only metadata snapshot** of a selected workspace so they can review those entries before making their own decisions.
 
-**Windows PowerShell:**
+Typical uses: inspecting an unfamiliar checkout, investigating an unexpected junction or symlink, checking Git worktree metadata, and producing a bounded JSON diagnostic for a bug report or CI investigation. **It does not decide whether a link is malicious, and its output must never be used as permission for another tool or agent to act.**
 
-```powershell
-node .\src\cli.mjs --help
-node .\src\cli.mjs doctor --json
-node .\src\cli.mjs scan "C:\Projects\MyRepository"
-node .\src\cli.mjs scan "C:\Projects\MyRepository" --json
-```
+## Quick start: install and run
 
-**macOS / Linux:**
+**Requirements:** Node.js 22 or newer, with npm. Reparse Lens is a Node.js CLI, not a Windows installer or graphical application.
+
+Install the current published **experimental preview**:
 
 ```sh
-node ./src/cli.mjs doctor
-node ./src/cli.mjs scan "$HOME/projects/my-repository"
-node ./src/cli.mjs scan . --portable --json
+npm install -g reparse-lens@preview
+reparse-lens --version
+reparse-lens doctor --json
 ```
 
-The tool is intentionally conservative. A clean Windows workspace normally yields **`INCOMPLETE` / exit 3**, not exit 0, because native inspection of every Windows reparse tag is not implemented. A detected junction is **`BLOCKED` / exit 2**. Neither status changes user or agent permissions.
+The version command should report `0.1.0-preview.2` for this preview release. The `doctor` command shows runtime capabilities without scanning files. Always specify **`@preview`**: npm's `latest` tag is not the current preview.
+
+**Windows PowerShell — scan one project directory:**
+
+```powershell
+reparse-lens scan "C:\\Projects\\my-app" --json
+```
+
+**macOS / Linux — scan one project directory:**
+
+```sh
+reparse-lens scan "$HOME/projects/my-app" --json
+```
+
+Replace the example path with a directory that **already exists** on your machine. Start with one project, not your entire home directory. Running `scan .` from `C:\\Users\\<username>` may encounter normal Windows compatibility junctions and large `node_modules` trees, producing `BLOCKED` and a scan-limit warning even when no malicious behavior is established.
+
+**Without a global installation:** download the [GitHub source release](https://github.com/Sharifi2220/reparse-lens/releases/tag/v0.1.0-preview.2) or clone this repository. From the extracted repository root, run:
+
+```sh
+node src/cli.mjs --help
+node src/cli.mjs doctor --json
+node src/cli.mjs scan . --json
+```
+
+The source CLI needs Node.js, but no separate `npm install` step or runtime dependencies.
+
+### What should I expect?
+
+- **`BLOCKED` / exit 2:** at least one recognized link or path escape was observed. Ordinary Windows profile junctions can trigger this; it is **not** proof of malware and does **not** disable anything on your system.
+- **`INCOMPLETE` / exit 3:** the scanner could not establish coverage. Even a clean Windows folder has this status because native NTFS reparse-tag coverage is not complete.
+- **`ADVISORY` / exit 0:** implemented checks completed without a reportable finding on the current platform. This is **not** a security approval.
+- **`scanComplete: false` with `scanLimit`:** the entry/depth traversal budget stopped the scan. This can appear **at the same time as `BLOCKED`**. The `scanLimit.nextPath` is the next entry *not* inspected; it is not an infected file.
+- **`authorization: false`:** always. Reparse Lens cannot grant access or authorize execution.
+
+For practical interpretation see the [FAQ](docs/FAQ.md). For structured integrations see the [JSON interface](docs/JSON_API.md).
 
 ## CLI reference
 
