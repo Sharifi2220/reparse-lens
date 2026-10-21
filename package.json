@@ -1,0 +1,45 @@
+{
+  "name": "reparse-lens",
+  "version": "0.1.0-dev",
+  "private": true,
+  "type": "module",
+  "description": "Offline workspace link and Windows path-compatibility diagnostics; advisory only",
+  "license": "MPL-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Sharifi2220/reparse-lens.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Sharifi2220/reparse-lens/issues"
+  },
+  "homepage": "https://github.com/Sharifi2220/reparse-lens",
+  "keywords": [
+    "windows",
+    "filesystem",
+    "reparse-point",
+    "junction",
+    "symlink",
+    "git",
+    "cli",
+    "security-tools"
+  ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "bin": {
+    "reparse-lens": "./src/cli.mjs"
+  },
+  "files": [
+    "src/",
+    "LICENSE",
+    "README.md",
+    "SECURITY.md",
+    "docs/FAQ.md",
+    "docs/THREAT_MODEL.md"
+  ],
+  "scripts": {
+    "scan": "node src/cli.mjs scan .",
+    "test": "node --test",
+    "check": "node --check src/scanner.mjs && node --check src/cli.mjs && node --check test/scanner.test.mjs && node src/cli.mjs --version"
+  }
+}

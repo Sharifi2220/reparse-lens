@@ -1,0 +1,31 @@
+name: CI — Reparse Lens (advisory)
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    name: Node ${{ matrix.node }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          package-manager-cache: false
+      - name: Source syntax and CLI version
+        run: npm run check
+      - name: Local, synthetic test suite
+        run: npm test
+      - name: User entry points
+        run: |
+          node src/cli.mjs --help
+          node src/cli.mjs --version
+          node src/cli.mjs doctor --json
+      - name: Inspect proposed package contents
+        run: npm pack --dry-run --json --ignore-scripts

@@ -1,0 +1,243 @@
+// SPDX-License-Identifier: MPL-2.0
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync, linkSync, readdirSync
+} from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
+import { scanWorkspace } from '../src/scanner.mjs';
+
+
+const testParent = dirname(fileURLToPath(import.meta.url));
+function withFixture(work) {
+  const base = mkdtempSync(join(testParent, '.reparse-lens-fixture-'));
+  const root = join(base, 'repo');
+  mkdirSync(root);
+  try { return work(root, base); }
+  finally { rmSync(base, { recursive: true, force: true }); }
+}
+const cleanStatus = process.platform === 'win32' ? 'INCOMPLETE' : 'ADVISORY';
+
+
+test('clean tree is advisory, not authorization', () => withFixture(root => {
+  mkdirSync(join(root, 'empty'));
+  writeFileSync(join(root, 'safe.txt'), 'fixture');
+  const r = scanWorkspace(root);
+  assert.equal(r.status, cleanStatus);
+  assert.equal(r.authorization, false);
+  assert.deepEqual(r.findings, []);
+  assert.ok(r.entriesChecked >= 2);
+}));
+
+
+test('hidden ignored empty directory still consumes scan budget', () => withFixture(root => {
+  mkdirSync(join(root, '.hidden'));
+  mkdirSync(join(root, '.hidden', 'empty'));
+  const r = scanWorkspace(root, { maxEntries: 1 });
+  assert.equal(r.status, 'INCOMPLETE');
+  assert.ok(r.findings.some(f => f.code === 'SCAN_ENTRY_LIMIT'));
+}));
+
+
+test('depth ceiling never produces a clean result', () => withFixture(root => {
+  mkdirSync(join(root, 'deep'));
+  mkdirSync(join(root, 'deep', 'deeper'));
+  const r = scanWorkspace(root, { maxDepth: 1 });
+  assert.equal(r.status, 'INCOMPLETE');
+  assert.ok(r.findings.some(f => f.code === 'SCAN_DEPTH_LIMIT'));
+}));
+
+
+test('only root .git internals are excluded, with warning', () => withFixture(root => {
+  mkdirSync(join(root, '.git'));
+  mkdirSync(join(root, '.git', 'objects'));
+  mkdirSync(join(root, 'nested'));
+  mkdirSync(join(root, 'nested', '.git'));
+  writeFileSync(join(root, 'nested', '.git', 'file'), 'fixture');
+  const r = scanWorkspace(root);
+  assert.equal(r.excludedGitInternals, 1);
+  assert.ok(r.entriesChecked >= 4);
+  assert.ok(r.warnings.includes('ROOT_GIT_INTERNALS_NOT_SCANNED'));
+}));
+
+
+test('hardlink aliases are unresolved, never silently accepted', () => withFixture(root => {
+  writeFileSync(join(root, 'a.txt'), 'data');
+  linkSync(join(root, 'a.txt'), join(root, 'b.txt'));
+  const r = scanWorkspace(root);
+  assert.equal(r.status, 'INCOMPLETE');
+  assert.ok(r.findings.some(f => f.code === 'MULTIPLE_HARDLINKS_UNRESOLVED'));
+}));
+
+
+test('invalid root and limits fail without unsafe PASS', () => withFixture(root => {
+  assert.equal(scanWorkspace(join(root, 'missing')).status, 'INCOMPLETE');
+  assert.throws(() => scanWorkspace(root, { maxEntries: 0 }), /INVALID_SCAN_LIMIT/);
+  assert.throws(() => scanWorkspace(root, { maxDepth: 999 }), /INVALID_SCAN_LIMIT/);
+}));
+
+
+test('link or Windows junction is detected even if empty and untracked', t => withFixture((root, base) => {
+  const outside = join(base, 'outside');
+  mkdirSync(outside);
+  const link = join(root, 'ignored-empty');
+  try {
+    symlinkSync(outside, link, process.platform === 'win32' ? 'junction' : 'dir');
+  } catch (e) {
+    if (['EPERM', 'EACCES', 'ENOTSUP', 'EOPNOTSUPP'].includes(e?.code)) {
+      t.skip('Host cannot create a link fixture; security acceptance remains open');
+      return;
+    }
+    throw e;
+  }
+  const r = scanWorkspace(root);
+  assert.equal(r.status, 'BLOCKED');
+  assert.ok(r.findings.some(f => f.code === 'LINK_FOUND' || f.code === 'DIRECTORY_ESCAPE'));
+  assert.equal(r.authorization, false);
+}));
+
+
+test('file content is not needed to identify risky entries', () => withFixture(root => {
+  writeFileSync(join(root, 'regular-file'), 'SYNTHETIC_SECRET_DO_NOT_OUTPUT');
+  const text = JSON.stringify(scanWorkspace(root));
+  assert.equal(text.includes('SYNTHETIC_SECRET_DO_NOT_OUTPUT'), false);
+}));
+
+
+test('portable scan reports Windows reserved and trailing-dot names on POSIX', t => withFixture(root => {
+  if (process.platform === 'win32') { t.skip('Windows forbids the fixture'); return; }
+  writeFileSync(join(root, 'NUL.txt'), 'fixture');
+  writeFileSync(join(root, 'trailing.'), 'fixture');
+  const result = scanWorkspace(root, { portable: true });
+  assert.equal(result.status, 'INCOMPLETE');
+  assert.equal(result.portabilityChecked, true);
+  assert.equal(result.findings.filter(f => f.code === 'WINDOWS_NAME_NOT_PORTABLE').length, 2);
+}));
+
+
+test('portable mode flags cross-platform case collisions', t => withFixture(root => {
+  if (process.platform === 'win32') { t.skip('Case-sensitive Windows fixture not available'); return; }
+  writeFileSync(join(root, 'Foo'), 'fixture');
+  writeFileSync(join(root, 'foo'), 'fixture');
+  // macOS and other hosts may use a case-insensitive filesystem.
+  const names = readdirSync(root);
+  if (!(names.includes('Foo') && names.includes('foo'))) {
+    t.skip('Fixture filesystem does not distinguish case variants');
+    return;
+  }
+  const result = scanWorkspace(root, { portable: true });
+  assert.equal(result.status, 'INCOMPLETE');
+  assert.ok(result.findings.some(f => f.code === 'WINDOWS_NAME_COLLISION_POSSIBLE'));
+  assert.equal(scanWorkspace(root).status, 'ADVISORY');
+}));
+
+
+test('linked worktree .git pointer is disclosed as uninspected', () => withFixture(root => {
+  writeFileSync(join(root, '.git'), 'gitdir: ../external');
+  const result = scanWorkspace(root);
+  assert.equal(result.status, 'INCOMPLETE');
+  assert.ok(result.findings.some(f => f.code === 'GITDIR_FILE_NOT_INSPECTED'));
+}));
+
+
+test('portable option must be strictly boolean', () => withFixture(root => {
+  assert.throws(() => scanWorkspace(root, { portable: 'yes' }), /INVALID_PORTABLE_OPTION/);
+}));
+
+
+test('CLI doctor reports transparent platform limits without scanning', () => {
+  const cli = join(testParent, '..', 'src', 'cli.mjs');
+  const res = spawnSync(process.execPath, [cli, 'doctor', '--json'], { encoding: 'utf8' });
+  assert.equal(res.status, 0);
+  const doctor = JSON.parse(res.stdout);
+  assert.equal(doctor.authorization, false);
+  assert.equal(doctor.nativeWindowsReparseTags, false);
+  assert.equal(doctor.platform, process.platform);
+});
+
+
+test('CLI clean scan JSON and missing-root have distinct exit codes', () => withFixture(root => {
+  const cli = join(testParent, '..', 'src', 'cli.mjs');
+  const clean = spawnSync(process.execPath, [cli, 'scan', root, '--portable', '--json'], { encoding: 'utf8' });
+  assert.equal(clean.status, process.platform === 'win32' ? 3 : 0);
+  const report = JSON.parse(clean.stdout);
+  assert.equal(report.portabilityChecked, true);
+  assert.equal(report.authorization, false);
+  const missing = spawnSync(process.execPath, [cli, 'scan', join(root, 'missing'), '--json'], { encoding: 'utf8' });
+  assert.equal(missing.status, 3);
+  assert.ok(JSON.parse(missing.stdout).findings.some(f => f.code === 'ROOT_UNAVAILABLE'));
+  const invalid = spawnSync(process.execPath, [cli, 'scan', root, '--bad'], { encoding: 'utf8' });
+  assert.equal(invalid.status, 64);
+}));
+
+
+test('nested gitfile is reported as uninspected rather than silently accepted', () => withFixture(root => {
+  mkdirSync(join(root, 'vendor'));
+  writeFileSync(join(root, 'vendor', '.git'), 'gitdir: ../../outside');
+  const report = scanWorkspace(root);
+  assert.equal(report.status, 'INCOMPLETE');
+  assert.ok(report.findings.some(f => f.code === 'GITDIR_FILE_NOT_INSPECTED' && f.path === 'vendor/.git'));
+}));
+
+
+test('bounded findings output preserves total counts and never reports advisory', () => withFixture(root => {
+  for (const folder of ['alpha', 'beta', 'gamma']) {
+    mkdirSync(join(root, folder));
+    writeFileSync(join(root, folder, '.git'), 'gitdir: ../metadata');
+  }
+  const r = scanWorkspace(root, { maxFindings: 1 });
+  assert.equal(r.status, 'INCOMPLETE');
+  assert.equal(r.findings.length, 1);
+  assert.equal(r.summary.gitMetadata, 3);
+  assert.equal(r.summary.totalFindings, 3);
+  assert.equal(r.summary.omittedFindings, 2);
+  assert.ok(r.warnings.includes('FINDINGS_TRUNCATED'));
+  assert.equal(r.authorization, false);
+}));
+
+
+test('link after finding-output truncation is still BLOCKED', t => withFixture((root, base) => {
+  for (const folder of ['alpha', 'beta']) {
+    mkdirSync(join(root, folder));
+    writeFileSync(join(root, folder, '.git'), 'gitdir: ../metadata');
+  }
+  mkdirSync(join(base, 'outside'));
+  try {
+    symlinkSync(join(base, 'outside'), join(root, 'link'), process.platform === 'win32' ? 'junction' : 'dir');
+  } catch (e) {
+    if (['EPERM', 'EACCES', 'ENOTSUP', 'EOPNOTSUPP'].includes(e?.code)) {
+      t.skip('link fixture unavailable; not a Windows acceptance'); return;
+    }
+    throw e;
+  }
+  const r = scanWorkspace(root, { portable: true, maxFindings: 1 });
+  assert.equal(r.status, 'BLOCKED');
+  assert.equal(r.summary.linksAndEscapes, 1);
+  assert.ok(r.findings.some(f => f.code === 'LINK_FOUND'), 'A blocking link remains visible');
+  assert.equal(r.summary.totalFindings, 3);
+  assert.equal(r.authorization, false);
+}));
+
+
+test('invalid maxFindings is rejected before scanning', () => withFixture(root => {
+  assert.throws(() => scanWorkspace(root, { maxFindings: 0 }), /INVALID_SCAN_LIMIT/);
+  assert.throws(() => scanWorkspace(root, { maxFindings: 100001 }), /INVALID_SCAN_LIMIT/);
+}));
+
+
+test('CLI output limit and grouped findings remain machine readable', () => withFixture(root => {
+  const cli = join(testParent, '..', 'src', 'cli.mjs');
+  for (const folder of ['alpha', 'beta']) {
+    mkdirSync(join(root, folder));
+    writeFileSync(join(root, folder, '.git'), 'gitdir: ../metadata');
+  }
+  const res = spawnSync(process.execPath, [cli, 'scan', root, '--portable', '--max-findings', '1', '--json'], { encoding: 'utf8' });
+  assert.equal(res.status, 3);
+  const data = JSON.parse(res.stdout);
+  assert.equal(data.findings.length, 1);
+  assert.equal(data.summary.totalFindings, 2);
+  assert.equal(data.summary.omittedFindings, 1);
+  assert.ok(data.warnings.includes('FINDINGS_TRUNCATED'));
+}));
