@@ -33,7 +33,7 @@ The npm dry-run allowlist is smaller and independent: exactly eight runtime/dist
 - [x] Release-candidate test suite has 25 tests; Windows Node 24.15.0: `npm run check` exit 0, `npm test` 21 PASS, 0 FAIL, 4 SKIP.
 - [x] Actual isolated NTFS junction on Windows reported `BLOCKED` / exit 2 and `authorization: false`; sentinel target not traversed in the test.
 - [x] Clean Windows scan reported `INCOMPLETE` / exit 3.
-- [x] Final GitHub Actions run `39601823151`: six jobs succeeded (Node 22/24 × Windows/Ubuntu/macOS; Windows 21 PASS/4 SKIP, Ubuntu 25/0, macOS 24/1 per job).
+- [x] Final GitHub Actions run `39602405427`: six jobs succeeded (Node 22/24 × Windows/Ubuntu/macOS; Windows 21 PASS/4 SKIP, Ubuntu 25/0, macOS 24/1 per job).
 - [x] `npm pack --dry-run --json --ignore-scripts` reported eight allowlisted runtime files for the tested source.
 - [x] Initial current-tree inventory of 14 intended public tracked files completed; no status, research or temporary files in this tree.
 
