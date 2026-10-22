@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: MPL-2.0
 // Advisory workspace scanner. This is not an authorization boundary.
 import { scanWorkspace } from './scanner.mjs';
+import packageInfo from '../package.json' with { type: 'json' };
 
-const VERSION = '0.1.0-preview.2';
+const VERSION = packageInfo.version;
 const HELP = [
   'Reparse Lens ' + VERSION,
   '',
@@ -24,6 +25,7 @@ const HELP = [
   '  2  BLOCKED: link or escape detected',
   '  3  INCOMPLETE: coverage could not be established',
   '  64 invalid command',
+  '  70 internal failure',
   '',
   'Findings are grouped in the JSON summary. --max-findings limits output size.',
   '',
@@ -65,6 +67,9 @@ function parseArgs(argv) {
       const key = arg === '--max-entries' ? 'maxEntries' : arg === '--max-depth' ? 'maxDepth' : 'maxFindings';
       if (options[key] !== undefined) throw new TypeError(arg + ' specified twice');
       options[key] = Number(raw);
+      const max = key === 'maxDepth' ? 256 : key === 'maxFindings' ? 100000 : 1000000;
+      if (!Number.isSafeInteger(options[key]) || options[key] > max)
+        throw new TypeError('Limit too large for ' + arg);
     } else if (!optionsEnded && arg.startsWith('-')) {
       throw new TypeError('Unknown option: ' + arg);
     } else if (directory !== undefined) {
@@ -86,9 +91,14 @@ function humanReport(report) {
   ];
   if (!report.findings.length) lines.push('No links or escapes detected by the checks performed.');
   else for (const f of report.findings)
-    lines.push('  ' + f.code + ': ' + f.path + (f.detail ? ' (' + f.detail + ')' : ''));
+    lines.push('  ' + f.code + ': ' + f.path +
+      (f.ancestor ? ' [linked ancestor: ' + f.ancestor + ']' : '') +
+      (f.scope ? ' [target ' + f.scope + ']' : '') +
+      (f.detail ? ' (' + f.detail + ')' : ''));
   if (report.summary.omittedFindings)
     lines.push('Output limited: ' + report.summary.omittedFindings + ' additional findings not listed.');
+  if (!report.scanComplete && !report.scanLimit)
+    lines.push('Scan coverage: ' + report.coverage.enumeration.toUpperCase() + ' — workspace scan was not fully completed.');
   if (!report.scanComplete && report.scanLimit)
     lines.push('Scan coverage: INCOMPLETE — ' + report.scanLimit.kind + ' limit ' +
       report.scanLimit.limit + ' reached; next path not checked: ' + report.scanLimit.nextPath);
@@ -104,8 +114,10 @@ function humanReport(report) {
   return lines.join('\n') + '\n';
 }
 
+let commandParsed = false;
 try {
   const args = parseArgs(process.argv.slice(2));
+  commandParsed = true;
   if (args.action === 'help') process.stdout.write(HELP);
   else if (args.action === 'version') process.stdout.write(VERSION + '\n');
   else if (args.action === 'doctor') {
@@ -122,8 +134,6 @@ try {
     process.exitCode = result.status === 'BLOCKED' ? 2 : result.status === 'INCOMPLETE' ? 3 : 0;
   }
 } catch (e) {
-  process.stderr.write('REPARSE_LENS: ' + (e instanceof TypeError ? e.message : 'Unexpected scan failure') + '\n');
-  process.exitCode = 64;
+  process.stderr.write('REPARSE_LENS: ' + (!commandParsed && e instanceof TypeError ? e.message : 'Unexpected scan failure') + '\n');
+  process.exitCode = commandParsed ? 70 : 64;
 }
-
-
