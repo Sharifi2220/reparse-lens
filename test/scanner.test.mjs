@@ -368,7 +368,7 @@ test('reported filename truncation preserves Unicode codepoints and sanitizes C1
   assert.ok(!JSON.stringify(r).includes('\u009b'));
 }));
 
-test('link target metadata classifies scope without allowing links', t => withFixture((root, base) => {
+test('link sightings remain blocked and never resolve their targets', t => withFixture((root, base) => {
   mkdirSync(join(root, 'inside'));
   mkdirSync(join(base, 'outside'));
   try {
@@ -380,12 +380,26 @@ test('link target metadata classifies scope without allowing links', t => withFi
     }
     throw e;
   }
-  const report = scanWorkspace(root);
+  const native = realpathSync.native;
+  const dangerous = new Set([join(root, 'internal-link'), join(root, 'external-link')]);
+  let targetResolutionAttempts = 0;
+  realpathSync.native = (...args) => {
+    if (dangerous.has(args[0])) {
+      targetResolutionAttempts++;
+      throw new Error('No link target resolution allowed');
+    }
+    return native(...args);
+  };
+  let report;
+  try { report = scanWorkspace(root); }
+  finally { realpathSync.native = native; }
+  assert.equal(targetResolutionAttempts, 0, 'link target realpath must not be called');
   assert.equal(report.status, 'BLOCKED');
   assert.equal(report.authorization, false);
   assert.equal(report.coverage.enumeration, 'complete');
-  assert.equal(report.findings.find(f => f.path === 'internal-link')?.scope, 'internal');
-  assert.equal(report.findings.find(f => f.path === 'external-link')?.scope, 'external');
+  const links = report.findings.filter(f => f.code === 'LINK_FOUND');
+  assert.equal(links.length, 2);
+  assert.ok(links.every(f => !Object.hasOwn(f, 'scope')));
 }));
 
 test('bidi-control path labels are sanitized', t => withFixture(root => {
@@ -427,3 +441,40 @@ test('out-of-range CLI scan option remains usage error 64', () => {
   assert.equal(res.status, 64, res.stderr);
 });
 
+
+test('whitespace directory is a CLI usage error 64', () => {
+  const cli = join(testParent, '..', 'src', 'cli.mjs');
+  const res = spawnSync(process.execPath, [cli, 'scan', '   '], { encoding: 'utf8' });
+  assert.equal(res.status, 64, res.stderr);
+  assert.match(res.stderr, /Directory must not be empty/);
+});
+
+test('unexpected write failure is internal error 70', () => {
+  const code = `
+    process.argv = [process.execPath, 'src/cli.mjs', '--version'];
+    process.stdout.write = () => { throw new Error('synthetic stdout failure'); };
+    await import('./src/cli.mjs');
+  `;
+  const res = spawnSync(process.execPath, ['--input-type=module', '-e', code],
+    { encoding: 'utf8', cwd: join(testParent, '..') });
+  assert.equal(res.status, 70, res.stderr);
+  assert.match(res.stderr, /Unexpected scan failure/);
+  assert.doesNotMatch(res.stderr, /synthetic stdout failure/);
+});
+
+test('dangling symlink remains blocked without target diagnostics', t => withFixture(root => {
+  const p = join(root, 'dangling-link');
+  try { symlinkSync(join(root, 'missing-target'), p, process.platform === 'win32' ? 'file' : 'file'); }
+  catch (e) {
+    if (['EPERM', 'EACCES', 'ENOTSUP', 'EOPNOTSUPP'].includes(e?.code)) {
+      t.skip('Host cannot create symlink fixture'); return;
+    }
+    throw e;
+  }
+  const report = scanWorkspace(root);
+  assert.equal(report.status, 'BLOCKED');
+  const f = report.findings.find(f => f.code === 'LINK_FOUND');
+  assert.ok(f);
+  assert.equal(f.path, 'dangling-link');
+  assert.equal(f.scope, undefined);
+}));
