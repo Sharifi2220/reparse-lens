@@ -22,6 +22,7 @@ An abbreviated clean report looks like this:
   "excludedGitInternals": 0,
   "scanComplete": true,
   "scanLimit": null,
+  "coverage": { "enumeration": "complete", "windowsNativeReparseTags": "not-applicable" },
   "limits": {
     "maxEntries": 30000,
     "maxDepth": 64,
@@ -60,7 +61,8 @@ Paths in findings are bounded, display-oriented labels relative to the selected 
 | `platform` | string | Node.js `process.platform`, for example `win32`, `linux` or `darwin`. |
 | `entriesChecked` | number | Entries inspected within the entry budget. |
 | `excludedGitInternals` | number | Root `.git` directories recognized and intentionally not enumerated. |
-| `scanComplete` | boolean | Whether the directory/depth budgets completed without stopping the traversal. This does not mean the result is safe. |
+| `scanComplete` | boolean | Whether traversal started and no scan limit or traversal failure was observed. Not full OS/provider coverage. |
+| `coverage` | object | `enumeration` is `not-started`, `partial` or `complete`; `windowsNativeReparseTags` is `unverified` on Windows and `not-applicable` elsewhere. Neither grants authorization. |
 | `scanLimit` | object or null | When a budget stops traversal, contains `kind` (`entries` or `depth`), `limit`, and the next `nextPath` that was not inspected. |
 | `limits` | object | Effective `maxEntries`, `maxDepth` and `maxFindings` values. |
 | `portabilityChecked` | boolean | Whether `--portable` heuristics were enabled. |
@@ -96,9 +98,12 @@ The exact list is intentionally extensible. Consumers should handle unknown find
 | `0` | `ADVISORY` | Implemented checks completed without a reported finding on a non-Windows platform. Not proof of safety. |
 | `2` | `BLOCKED` | A recognized link or path escape was observed. Review before any separate operation. |
 | `3` | `INCOMPLETE` | Coverage, I/O, budget, portability or metadata uncertainty remains. |
-| `64` | none guaranteed | Invalid arguments or an unexpected scan-level failure. |
+| `64` | none guaranteed | Invalid CLI arguments. |
+| `70` | none guaranteed | Unexpected internal CLI/scan failure. |
 
 When `summary.omittedFindings` is positive, the displayed array is truncated and `warnings` contains `FINDINGS_TRUNCATED`. When an entry/depth budget stops traversal, `scanComplete` is `false`, `scanLimit` describes the limit and next uninspected path, and `warnings` contains `SCAN_LIMIT_REACHED`. The main `status` can still be `BLOCKED`; consumers must inspect `scanComplete` independently. A blocking observation remains reflected in `status` and is retained in the visible findings when possible.
+
+For `LINK_FOUND`, optional `scope` is `internal`, `external` or `unknown` according to the resolved target. This does **not** identify the Windows native reparse tag or authorize following the entry. `ROOT_ANCESTOR_LINK.ancestor` may identify a linked path outside the workspace; treat it as sensitive diagnostic output. Every observed link remains `BLOCKED` regardless of scope.
 
 ## Integration rules
 
@@ -110,4 +115,3 @@ When `summary.omittedFindings` is positive, the displayed array is truncated and
 6. Preserve SKIP/INCOMPLETE evidence in CI summaries. A clean result on one host does not establish complete NTFS, cloud, UNC or mount-point coverage.
 
 For the CLI and architecture, see the [README](../README.md). For residual risk and non-goals, see the [threat model](THREAT_MODEL.md) and [security policy](../SECURITY.md).
-
