@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: MPL-2.0
 // Advisory workspace scanner. This is not an authorization boundary.
 import { scanWorkspace } from './scanner.mjs';
-import packageInfo from '../package.json' with { type: 'json' };
+import { readFileSync } from 'node:fs';
 
-const VERSION = packageInfo.version;
+const VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 const HELP = [
   'Reparse Lens ' + VERSION,
   '',
@@ -78,7 +78,8 @@ function parseArgs(argv) {
       directory = arg;
     }
   }
-  return { action: 'scan', directory: directory || '.', options, json };
+  if (directory !== undefined && !directory.trim()) throw new TypeError('Directory must not be empty');
+  return { action: 'scan', directory: directory === undefined ? '.' : directory, options, json };
 }
 
 function humanReport(report) {
@@ -93,7 +94,6 @@ function humanReport(report) {
   else for (const f of report.findings)
     lines.push('  ' + f.code + ': ' + f.path +
       (f.ancestor ? ' [linked ancestor: ' + f.ancestor + ']' : '') +
-      (f.scope ? ' [target ' + f.scope + ']' : '') +
       (f.detail ? ' (' + f.detail + ')' : ''));
   if (report.summary.omittedFindings)
     lines.push('Output limited: ' + report.summary.omittedFindings + ' additional findings not listed.');

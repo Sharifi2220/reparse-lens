@@ -160,13 +160,10 @@ export function scanWorkspace(selectedRoot, options = {}) {
         try {
           const stat = lstatSync(absolute);
           if (stat.isSymbolicLink() || entry.isSymbolicLink()) {
-            // Windows Dirent can also flag nonredirecting reparse tags as links.
-            // Scope describes canonical target location, NOT tag type or safety.
-            let scope = 'unknown';
-            try {
-              scope = inside(canonicalRoot, realpathSync.native(absolute)) ? 'internal' : 'external';
-            } catch { /* Broken or inaccessible target: remains blocked. */ }
-            recordFinding({ code: 'LINK_FOUND', path: shown, scope });
+            // Do not resolve targets: this can trigger outbound SMB authentication
+            // or hang on unavailable remote shares, even for metadata-only scans.
+            // Windows Dirent can also flag nonredirecting reparse points as links.
+            recordFinding({ code: 'LINK_FOUND', path: shown });
             continue;
           }
           if (stat.isDirectory()) {

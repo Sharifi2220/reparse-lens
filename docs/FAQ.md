@@ -23,7 +23,7 @@ Replace the example path with your actual project directory. From inside that di
 They describe **different facts**, not contradictory results:
 
 - `BLOCKED`: a recognizable link, junction or path escape was observed. On Windows, older compatibility directories in a user profile can cause this without indicating malware.
-- `scanComplete: false`: traversal stopped at an entry/depth budget. Inspect `scanLimit.kind`, `scanLimit.limit` and `scanLimit.nextPath`; the latter names the first **not inspected** entry, not necessarily a problem.
+- `scanComplete: false`: traversal did not start, was interrupted by an I/O error, or reached a budget. Only a budget stop has `scanLimit.kind`, `scanLimit.limit`, and `scanLimit.nextPath`; the latter names the first **not inspected** entry, not necessarily a problem. Also examine `coverage.enumeration`.
 - `entriesChecked` does not exceed the configured `maxEntries`. For example, 30,000 checked entries and a limit of 30,000 does not mean the remaining files were examined.
 - `SCAN_LIMIT_REACHED` is an explicit warning separate from any observed links. Raising a limit or narrowing the scan scope may help investigate, but neither approach makes the tool a security gate.
 
@@ -35,7 +35,7 @@ Node-based metadata checks cannot prove coverage of all native NTFS reparse tags
 
 ## Does BLOCKED mean a link is malicious?
 
-No. The scanner conservatively reports recognized links, including legitimate monorepo workspace links inside `node_modules`. It does not automatically allow internal links or follow their targets. Review the link separately and use your own trust policy; the scanner does not grant permission.
+No. The scanner conservatively reports recognized links, including legitimate monorepo workspace links inside `node_modules`. It does not automatically allow internal links or resolve their targets. A previous development version added a `scope` hint by resolving targets; this was withdrawn due to the risk of SMB/UNC network access on Windows. Review the link separately and use your own trust policy; the scanner does not grant permission.
 
 ## Why does a .git file generate a finding?
 
@@ -90,7 +90,9 @@ Include OS/filesystem, Node version, command, expected status/exit, observed sta
 
 ## What has been tested, and what remains unknown?
 
-On 2026-10-21, 27 test cases ran successfully in GitHub Actions on Node 22/24 × Windows, Ubuntu and macOS with all six jobs successful; platform fixture SKIPs remain explicit coverage gaps. A real Windows host also confirmed a recognized junction is blocked and not intentionally traversed; the release-candidate scanner, CLI and test sources were synchronized with the release branch.
+For the original 2026-10-21 preview release, 27 test cases ran successfully in GitHub Actions on Node 22/24 × Windows, Ubuntu and macOS with all six jobs successful; platform fixture SKIPs remain explicit coverage gaps. A real Windows host also confirmed a recognized junction is blocked and not intentionally traversed; the release-candidate scanner, CLI and test sources were synchronized with the release branch.
+
+For the local post-merge security correction on 2026-10-22, 36/36 tests passed on Linux Node 22.16 and syntax checks passed. This later hotfix has **not** completed a new Windows/macOS CI matrix, Windows SMB authentication test, or npm release; the cross-platform 33-test CI previously completed for PR #4 verifies the earlier source only.
 
 Unknown: complete Windows-native reparse-tag coverage, atomic traversal/no-follow handle guarantees, unrestricted cloud/UNC cases, and an external independent security certification. These are disclosed scope limits, not claims of completed protection. See the [technical design](../README.md#technical-design), [Threat model](THREAT_MODEL.md) and [Release checklist](../RELEASE_CHECKLIST.md).
 

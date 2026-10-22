@@ -103,7 +103,7 @@ The exact list is intentionally extensible. Consumers should handle unknown find
 
 When `summary.omittedFindings` is positive, the displayed array is truncated and `warnings` contains `FINDINGS_TRUNCATED`. When an entry/depth budget stops traversal, `scanComplete` is `false`, `scanLimit` describes the limit and next uninspected path, and `warnings` contains `SCAN_LIMIT_REACHED`. The main `status` can still be `BLOCKED`; consumers must inspect `scanComplete` independently. A blocking observation remains reflected in `status` and is retained in the visible findings when possible.
 
-For `LINK_FOUND`, optional `scope` is `internal`, `external` or `unknown` according to the resolved target. This does **not** identify the Windows native reparse tag or authorize following the entry. `ROOT_ANCESTOR_LINK.ancestor` may identify a linked path outside the workspace; treat it as sensitive diagnostic output. Every observed link remains `BLOCKED` regardless of scope.
+Security correction after 2026-10-22: `LINK_FOUND.scope` has been withdrawn from development output. The previous implementation used `realpathSync.native()` on recognized links, which could access an external target and trigger network authentication. Consumers must not require that optional field. Target locations are not resolved for recognized links; all such findings stay `BLOCKED`. `ROOT_ANCESTOR_LINK.ancestor` may identify a linked path outside the workspace; treat it as sensitive diagnostic output. Existing `schemaVersion: 1` remains for compatibility; review this behavioral change before a future release.
 
 ## Integration rules
 

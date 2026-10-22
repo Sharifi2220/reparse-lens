@@ -20,6 +20,8 @@ Never wire `ADVISORY`, `BLOCKED` or `INCOMPLETE` directly to a coding agent's au
 
 On the tested preview revision, `npm run check` and `npm test` completed with 27 test cases and no failures on the local Windows Node.js 24.15.0 host; fixture skips remain coverage gaps. A real NTFS junction was recognized as `BLOCKED` / exit 2, and a clean Windows tree stayed `INCOMPLETE` / exit 3. GitHub Actions run `39624538818` passed all six Node 22/24 jobs across Windows, Ubuntu and macOS. These results apply to the tested source revision; later documentation/code commits need their own CI check.
 
+**2026-10-22 follow-up (development candidate, not released):** A `scope` diagnostic added after the original npm preview used `realpathSync.native()` on observed links and could inadvertently resolve external/UNC targets, potentially initiating SMB authentication. The candidate correction removes that target resolution. Local Linux Node 22.16: 36/36 regressions plus syntax check passed. New Windows/macOS CI, authentic SMB host tests, and any npm release remain open; do not conflate these results with the earlier 27-case Windows run.
+
 The four Windows SKIPs are intentionally uncreatable portability/symlink fixtures in that runner environment, **not** passing security checks. Unknown Windows-native reparse tags, TOCTOU, full remote-filesystem coverage and independent security validation remain unverified.
 
 ## Dual-use declaration
