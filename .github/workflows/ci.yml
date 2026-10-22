@@ -18,6 +18,10 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           package-manager-cache: false
+      - name: Verify indexed text line endings
+        shell: bash
+        run: |
+          git ls-files --eol | awk '{ if ($1 == "i/crlf" || $1 == "i/mixed") { print "Non-LF index: " $0; bad=1 } } END { exit bad ? 1 : 0 }'
       - name: Source syntax and CLI version
         run: npm run check
       - name: Local, synthetic test suite
