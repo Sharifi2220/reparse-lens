@@ -4,7 +4,7 @@
 
 Reparse Lens is an offline-by-design, dependency-free Node.js **metadata inspector** for selected workspaces. It supplements Git inventory, which may miss empty, ignored and untracked link entries. The tool reports recognizable filesystem links, unexpected canonical paths, ambiguous metadata, and opt-in Windows filename portability issues.
 
-It does **not** enforce an access-control policy, sandbox another process, verify all native Windows reparse tags, prevent time-of-check/time-of-use races, read file contents or authorize agent actions. Every emitted report includes `authorization: false`.
+It does **not** enforce an access-control policy, sandbox another process, verify all native Windows reparse tags, prevent time-of-check/time-of-use races, read scanned workspace file contents (the CLI reads its own package manifest), or authorize agent actions. Every emitted report includes `authorization: false`.
 
 ## Source layout and data flow
 
@@ -37,9 +37,12 @@ Report `schemaVersion: 1` is unchanged. Key fields are `status`, `authorization`
 | At least one nonblocking unresolved finding or observed coverage gap | `INCOMPLETE` | 3 |
 | Otherwise clean implemented checks on non-Windows | `ADVISORY` | 0 |
 | Otherwise clean Windows scan | `INCOMPLETE` because native tag coverage is unverified | 3 |
-| Invalid CLI syntax or unexpected scan-level failure | No report status guaranteed | 64 |
+| Invalid CLI syntax | No report status guaranteed | 64 |
+| Unexpected internal CLI/scan failure | No report status guaranteed | 70 |
 
 For reporting budgets, `--max-findings` limits the stored/displayed finding list but continues scanning within entry/depth budgets. A recognized blocked finding changes `status` even when a list is full; the implementation retains one visible blocking finding. A positive `omittedFindings` also adds `FINDINGS_TRUNCATED`. The pending work stack and optional per-directory folded-name map still use memory: **bounded enumeration does not imply constant memory**.
+
+libuv Windows directory enumeration may label entries with `FILE_ATTRIBUTE_REPARSE_POINT` as links even for non-redirecting tags; Windows `lstat()` treats such entries differently. Consequently `Dirent.isSymbolicLink()` may be broader than `Stats.isSymbolicLink()`. This code-based observation is not a Windows host test of WindowsApps, OneDrive or arbitrary cloud placeholders. Link `scope` is a canonical-path location hint, NOT a native tag classification or safety guarantee.
 
 The following warning strings explicitly convey limitations: `SNAPSHOT_ONLY`, `NOT_AN_EXECUTION_AUTHORIZATION`, `TOCTOU_NOT_PREVENTED`, and on Windows `WINDOWS_REPARSE_TAG_COVERAGE_UNVERIFIED`. Other warnings describe omitted top-level Git internals or truncated output.
 

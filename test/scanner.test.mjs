@@ -2,16 +2,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync, linkSync, readdirSync
+  mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync, linkSync, readdirSync, realpathSync, readFileSync
 } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { scanWorkspace } from '../src/scanner.mjs';
 
 const testParent = dirname(fileURLToPath(import.meta.url));
 function withFixture(work) {
-  const base = mkdtempSync(join(testParent, '.reparse-lens-fixture-'));
+  const base = mkdtempSync(join(realpathSync.native(tmpdir()), 'reparse-lens-fixture-'));
   const root = join(base, 'repo');
   mkdirSync(root);
   try { return work(root, base); }
@@ -334,6 +335,9 @@ test('selected path with linked ancestor reports ROOT_ANCESTOR_LINK', t => withF
   const r = scanWorkspace(join(link, 'child'));
   assert.equal(r.status, 'BLOCKED');
   assert.deepEqual(r.findings.map(f => f.code), ['ROOT_ANCESTOR_LINK']);
+  assert.equal(r.scanComplete, false);
+  assert.equal(r.coverage.enumeration, 'not-started');
+  assert.ok(r.findings[0].ancestor, 'linked ancestor location is reported');
 }));
 
 test('Windows console device names receive portability diagnostics', t => withFixture(root => {
@@ -364,4 +368,62 @@ test('reported filename truncation preserves Unicode codepoints and sanitizes C1
   assert.ok(!JSON.stringify(r).includes('\u009b'));
 }));
 
+test('link target metadata classifies scope without allowing links', t => withFixture((root, base) => {
+  mkdirSync(join(root, 'inside'));
+  mkdirSync(join(base, 'outside'));
+  try {
+    symlinkSync(join(root, 'inside'), join(root, 'internal-link'), process.platform === 'win32' ? 'junction' : 'dir');
+    symlinkSync(join(base, 'outside'), join(root, 'external-link'), process.platform === 'win32' ? 'junction' : 'dir');
+  } catch (e) {
+    if (['EPERM', 'EACCES', 'ENOTSUP', 'EOPNOTSUPP'].includes(e?.code)) {
+      t.skip('Host does not support synthetic links'); return;
+    }
+    throw e;
+  }
+  const report = scanWorkspace(root);
+  assert.equal(report.status, 'BLOCKED');
+  assert.equal(report.authorization, false);
+  assert.equal(report.coverage.enumeration, 'complete');
+  assert.equal(report.findings.find(f => f.path === 'internal-link')?.scope, 'internal');
+  assert.equal(report.findings.find(f => f.path === 'external-link')?.scope, 'external');
+}));
+
+test('bidi-control path labels are sanitized', t => withFixture(root => {
+  if (process.platform === 'win32') { t.skip('Fixture name not portable to Windows'); return; }
+  writeFileSync(join(root, 'rtl\u200f.'), 'fixture');
+  writeFileSync(join(root, 'arabic\u061c.'), 'fixture');
+  const report = scanWorkspace(root, { portable: true });
+  assert.ok(report.findings.some(f => f.path === 'rtl?.'));
+  assert.ok(report.findings.some(f => f.path === 'arabic?.'));
+  assert.doesNotMatch(JSON.stringify(report), /[\u200e\u200f\u061c]/u);
+}));
+
+test('CLI version is read from package.json', () => {
+  const manifest = JSON.parse(readFileSync(join(testParent, '..', 'package.json'), 'utf8'));
+  const res = spawnSync(process.execPath, [join(testParent, '..', 'src', 'cli.mjs'), '--version'], { encoding: 'utf8' });
+  assert.equal(res.status, 0, res.stderr);
+  assert.equal(res.stdout.trim(), manifest.version);
+});
+
+test('coverage distinguishes enumeration from Windows tag checks', () => withFixture(root => {
+  const report = scanWorkspace(root);
+  assert.equal(report.coverage.enumeration, 'complete');
+  assert.equal(report.coverage.windowsNativeReparseTags,
+    process.platform === 'win32' ? 'unverified' : 'not-applicable');
+  assert.equal(report.authorization, false);
+  assert.equal(report.status, process.platform === 'win32' ? 'INCOMPLETE' : 'ADVISORY');
+}));
+
+test('unavailable roots never count as fully enumerated', () => withFixture(root => {
+  const report = scanWorkspace(join(root, 'missing'));
+  assert.equal(report.scanComplete, false);
+  assert.equal(report.coverage.enumeration, 'not-started');
+  assert.equal(report.status, 'INCOMPLETE');
+}));
+
+test('out-of-range CLI scan option remains usage error 64', () => {
+  const cli = join(testParent, '..', 'src', 'cli.mjs');
+  const res = spawnSync(process.execPath, [cli, 'scan', '.', '--max-entries', '1000001'], { encoding: 'utf8' });
+  assert.equal(res.status, 64, res.stderr);
+});
 

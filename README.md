@@ -81,13 +81,14 @@ For a directory literally named `-workspace`, use `node src/cli.mjs scan --json 
 | `0` | `ADVISORY` | Implemented metadata checks completed; **not** proof of safety |
 | `2` | `BLOCKED` | Recognized link or path escape detected |
 | `3` | `INCOMPLETE` | Unresolved finding, I/O/budget issue or known coverage limitation |
-| `64` | — | Invalid CLI arguments, or an unexpected scan-level failure |
+| `64` | — | Invalid CLI arguments |
+| `70` | — | Unexpected internal CLI/scan failure |
 
 Avoid treating any exit code as permission to let an automation read, execute, modify or delete files. Treat statuses as review signals.
 
 ## Reading the report
 
-The JSON report contains `schemaVersion`, `status`, `authorization`, `platform`, `entriesChecked`, `excludedGitInternals`, `scanComplete`, `scanLimit`, `limits`, `portabilityChecked`, `summary`, `findings` and `warnings`. See the [JSON interface reference](docs/JSON_API.md) for field meanings, finding shapes and scripting guidance.
+The JSON report contains `schemaVersion`, `status`, `authorization`, `platform`, `entriesChecked`, `excludedGitInternals`, `scanComplete`, `scanLimit`, `coverage`, `limits`, `portabilityChecked`, `summary`, `findings` and `warnings`. See the [JSON interface reference](docs/JSON_API.md) for field meanings, finding shapes and scripting guidance.
 
 Each finding has a diagnostic `code` and a bounded displayed `path`; some include `detail` for a sanitized I/O error. The `summary` counts `linksAndEscapes`, `portability`, `gitMetadata` and `other` findings, plus `totalFindings`, `shownFindings` and `omittedFindings`.
 
@@ -128,9 +129,9 @@ The scanner uses an explicit pending-directory stack rather than recursively inv
 
 A root `.git` directory is detected, then its internals are excluded with a warning. Nested `.git` directories are scanned. Git worktree `.git` files are reported as unresolved, without reading their content. `--portable` performs heuristic reserved-name and case-collision checks on each enumerated directory.
 
-**Important boundary:** A sequence of metadata checks is not atomic. Files may be swapped between checks (TOCTOU); unfamiliar Windows reparse tags, cloud placeholders, network/UNC mounts and hardlink targets are not exhaustively classified. A directory pending stack can also grow with discovered subdirectories, so the entry limit bounds enumeration work but is not a constant-memory guarantee. See [Threat model](docs/THREAT_MODEL.md) for failure modes and the [Developer FAQ](docs/FAQ.md) for practical interpretation.
+**Important boundary:** `LINK_FOUND.scope` optionally classifies the resolved target as `internal`, `external` or `unknown`. On Windows, libuv may classify *any* file-system reparse attribute as a link during directory enumeration, even a non-redirecting reparse type. Scope does not identify a native reparse tag and never grants permission: **all observed links remain `BLOCKED`**. `ROOT_ANCESTOR_LINK.ancestor` includes a bounded, sanitized and potentially sensitive parent path. A sequence of metadata checks is not atomic. Files may be swapped between checks (TOCTOU); unfamiliar Windows reparse tags, cloud placeholders, network/UNC mounts and hardlink targets are not exhaustively classified. A directory pending stack can also grow with discovered subdirectories, so the entry limit bounds enumeration work but is not a constant-memory guarantee. See [Threat model](docs/THREAT_MODEL.md) for failure modes and the [Developer FAQ](docs/FAQ.md) for practical interpretation.
 
-The `scan` and `doctor` commands do not intentionally read file bodies, launch Git/agents, send telemetry or write to the scanned tree. The test suite **does** create and remove disposable fixtures. Scanning a remote, cloud-backed or mapped filesystem may nevertheless cause operating-system/provider I/O outside the CLI's control.
+The `scan` and `doctor` commands do not intentionally read scanned workspace file bodies (the CLI loads its own package manifest for its version), launch Git/agents, send telemetry or write to the scanned tree. The test suite **does** create and remove disposable fixtures in the system's canonical temporary directory, not the synchronized source checkout. Scanning a remote, cloud-backed or mapped filesystem may nevertheless cause operating-system/provider I/O outside the CLI's control.
 
 ## Installing the preview
 
