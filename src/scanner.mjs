@@ -29,7 +29,7 @@ function inside(root, target) {
   return r === '' || (r !== '..' && !r.startsWith('..' + sep) && !isAbsolute(r));
 }
 function label(parts) {
-  const cleaned = parts.join('/').replace(/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g, '?');
+  const cleaned = parts.join('/').replace(/[\p{Cc}\p{Bidi_Control}]/gu, '?');
   let out = '';
   let count = 0;
   for (const codePoint of cleaned) {
@@ -66,6 +66,7 @@ export function scanWorkspace(selectedRoot, options = {}) {
   let blockedObserved = false;
   let displayedBlocked = false;
   let scanLimit = null;
+  let traversalInterrupted = false;
   const findingCounts = { linksAndEscapes: 0, portability: 0, gitMetadata: 0, other: 0 };
   function recordFinding(finding) {
     findingCounts[findingCategory(finding.code)] += 1;
@@ -101,7 +102,7 @@ export function scanWorkspace(selectedRoot, options = {}) {
     for (const part of parts.slice(0, -1)) {
       ancestor = resolve(ancestor, part);
       if (lstatSync(ancestor).isSymbolicLink()) {
-        recordFinding({ code: 'ROOT_ANCESTOR_LINK', path: '.' });
+        recordFinding({ code: 'ROOT_ANCESTOR_LINK', path: '.', ancestor: label([ancestor]) });
         return report();
       }
     }
@@ -129,6 +130,7 @@ export function scanWorkspace(selectedRoot, options = {}) {
       const currentStat = lstatSync(current.absolute);
       if (currentStat.isSymbolicLink() || !currentStat.isDirectory() ||
           !inside(canonicalRoot, realpathSync.native(current.absolute))) {
+        traversalInterrupted = true;
         recordFinding({ code: 'DIRECTORY_CHANGED_OR_ESCAPED', path: label(current.parts) || '.' });
         continue;
       }
@@ -158,7 +160,13 @@ export function scanWorkspace(selectedRoot, options = {}) {
         try {
           const stat = lstatSync(absolute);
           if (stat.isSymbolicLink() || entry.isSymbolicLink()) {
-            recordFinding({ code: 'LINK_FOUND', path: shown });
+            // Windows Dirent can also flag nonredirecting reparse tags as links.
+            // Scope describes canonical target location, NOT tag type or safety.
+            let scope = 'unknown';
+            try {
+              scope = inside(canonicalRoot, realpathSync.native(absolute)) ? 'internal' : 'external';
+            } catch { /* Broken or inaccessible target: remains blocked. */ }
+            recordFinding({ code: 'LINK_FOUND', path: shown, scope });
             continue;
           }
           if (stat.isDirectory()) {
@@ -194,14 +202,17 @@ export function scanWorkspace(selectedRoot, options = {}) {
           }
           recordFinding({ code: 'UNSUPPORTED_ENTRY_TYPE', path: shown });
         } catch (e) {
+          traversalInterrupted = true;
           recordFinding({ code: 'ENTRY_CHANGED_OR_UNREADABLE', path: shown, detail: errorCode(e) });
         }
       }
     } catch (e) {
+      traversalInterrupted = true;
       recordFinding({ code: 'UNREADABLE_DIRECTORY', path: label(current.parts) || '.', detail: errorCode(e) });
     } finally {
       if (dir) {
         try { dir.closeSync(); } catch (e) {
+          traversalInterrupted = true;
           recordFinding({ code: 'DIRECTORY_CLOSE_FAILED', path: label(current.parts) || '.', detail: errorCode(e) });
         }
       }
@@ -221,11 +232,14 @@ export function scanWorkspace(selectedRoot, options = {}) {
       schemaVersion: 1, status, authorization: false, platform: process.platform,
       entriesChecked: checkedEntries, excludedGitInternals,
       limits: { maxEntries, maxDepth, maxFindings }, portabilityChecked: portable,
-      scanComplete: scanLimit === null, scanLimit,
+      scanComplete: canonicalRoot !== undefined && scanLimit === null && !traversalInterrupted, scanLimit,
+      coverage: {
+        enumeration: canonicalRoot === undefined ? 'not-started' :
+          scanLimit === null && !traversalInterrupted ? 'complete' : 'partial',
+        windowsNativeReparseTags: process.platform === 'win32' ? 'unverified' : 'not-applicable'
+      },
       summary: { ...findingCounts, totalFindings: findings.length + omittedFindings,
         shownFindings: findings.length, omittedFindings }, findings, warnings
     };
   }
 }
-
-
