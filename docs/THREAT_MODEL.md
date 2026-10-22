@@ -42,7 +42,7 @@ Report `schemaVersion: 1` is unchanged. Key fields are `status`, `authorization`
 
 For reporting budgets, `--max-findings` limits the stored/displayed finding list but continues scanning within entry/depth budgets. A recognized blocked finding changes `status` even when a list is full; the implementation retains one visible blocking finding. A positive `omittedFindings` also adds `FINDINGS_TRUNCATED`. The pending work stack and optional per-directory folded-name map still use memory: **bounded enumeration does not imply constant memory**.
 
-libuv Windows directory enumeration may label entries with `FILE_ATTRIBUTE_REPARSE_POINT` as links even for non-redirecting tags; Windows `lstat()` treats such entries differently. Consequently `Dirent.isSymbolicLink()` may be broader than `Stats.isSymbolicLink()`. This code-based observation is not a Windows host test of WindowsApps, OneDrive or arbitrary cloud placeholders. Link `scope` is a canonical-path location hint, NOT a native tag classification or safety guarantee.
+libuv Windows directory enumeration may label entries with `FILE_ATTRIBUTE_REPARSE_POINT` as links even for non-redirecting tags; Windows `lstat()` treats such entries differently. Consequently `Dirent.isSymbolicLink()` may be broader than `Stats.isSymbolicLink()`. This code-based observation is not a Windows host test of WindowsApps, OneDrive or arbitrary cloud placeholders. A prior development-only `scope` implementation resolved link targets and could trigger network authentication over UNC paths. It is removed in this correction: recognized link targets are not resolved. Metadata inspection of the scan root, ordinary files, or cloud-backed filesystems may still involve OS/provider network I/O; the scanner is not a network isolation boundary.
 
 The following warning strings explicitly convey limitations: `SNAPSHOT_ONLY`, `NOT_AN_EXECUTION_AUTHORIZATION`, `TOCTOU_NOT_PREVENTED`, and on Windows `WINDOWS_REPARSE_TAG_COVERAGE_UNVERIFIED`. Other warnings describe omitted top-level Git internals or truncated output.
 
@@ -83,3 +83,7 @@ Any source or workflow change requires fresh verification. The preview remains e
 - [Microsoft: FSCTL_GET_REPARSE_POINT](https://learn.microsoft.com/en-us/windows/win32/api/winioctl/ni-winioctl-fsctl_get_reparse_point)
 - [Microsoft: filename naming rules](https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file)
 - [MITRE CWE-367: Time-of-check Time-of-use Race Condition](https://cwe.mitre.org/data/definitions/367.html)
+
+## Development security correction (2026-10-22)
+
+The post-preview GitHub branch previously added optional link target `scope` via `realpathSync.native(link)`. This introduced unintended target traversal and potential Windows SMB authentication. The correction removes `scope` and its resolution call; regression tests instrument `realpathSync.native` to reject resolution of known link fixtures. This local test is not a proof for every Windows/cloud filesystem, nor a substitute for an OS-level sandbox. `authorization: false`, the `BLOCKED` status for every observed link, and conservative Windows coverage are unchanged. The CLI also preserves Node 22.0 compatibility by reading its own manifest without experimental JSON module imports.
